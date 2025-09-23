@@ -1,4 +1,4 @@
-# Usar imagem Python base mais simples
+# Usar imagem Python base
 FROM python:3.11-slim
 
 # Variáveis de ambiente
@@ -26,25 +26,17 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     apt-get install -y google-chrome-stable && \
     rm -rf /var/lib/apt/lists/*
 
-# Instalar ChromeDriver
-RUN CHROME_VERSION=$(google-chrome --version | cut -d " " -f3 | cut -d "." -f1-3) && \
-    echo "Chrome version: $CHROME_VERSION" && \
-    DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION") && \
-    echo "Driver version: $DRIVER_VERSION" && \
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /tmp && \
-    mv /tmp/chromedriver /usr/local/bin/ && \
-    chmod +x /usr/local/bin/chromedriver && \
-    rm /tmp/chromedriver.zip
+# Limpar cache
+RUN apt-get autoremove -y && apt-get clean
 
-# Criar usuário app com UID/GID específicos
+# Criar usuário app
 RUN groupadd -r app --gid=1000 && \
     useradd -r -g app --uid=1000 --home-dir=/app --shell=/bin/bash app
 
 # Configurar diretório de trabalho
 WORKDIR /app
 
-# Criar estrutura completa de diretórios como root
+# Criar estrutura de diretórios
 RUN mkdir -p /app/media /app/static /app/staticfiles /app/logs && \
     chown -R app:app /app && \
     chmod -R 755 /app
@@ -52,18 +44,21 @@ RUN mkdir -p /app/media /app/static /app/staticfiles /app/logs && \
 # Atualizar pip
 RUN python -m pip install --upgrade pip
 
-# Copiar requirements primeiro (para cache do Docker)
+# Copiar requirements primeiro
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Instalar webdriver-manager (gerencia ChromeDriver automaticamente)
+RUN pip install webdriver-manager
 
 # Copiar código do projeto
 COPY . /app/
 
-# Ajustar permissões de tudo para o usuário app
+# Ajustar permissões
 RUN chown -R app:app /app && \
     chmod -R 755 /app
 
-# Copiar e configurar entrypoint
+# Copiar entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && \
     chown app:app /entrypoint.sh
