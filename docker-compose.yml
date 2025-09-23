@@ -21,6 +21,7 @@ services:
     container_name: webscrap-backend
     volumes:
       - ./backend:/app
+      - ./media:/app/media
     env_file:
       - .env
     ports:
