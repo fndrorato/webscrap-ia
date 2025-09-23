@@ -2,8 +2,10 @@
 
 echo "=== INICIANDO CONTAINER ==="
 echo "User: $(whoami)"
+echo "UID: $(id -u)"
+echo "GID: $(id -g)"
 echo "Workdir: $(pwd)"
-echo "Python version: $(python3 --version)"
+echo "Python version: $(python --version)"
 
 # Verificar se Chrome está instalado
 if command -v google-chrome >/dev/null 2>&1; then
@@ -19,42 +21,62 @@ else
     echo "WARNING: ChromeDriver não encontrado"
 fi
 
-# Verificar estrutura de diretórios
-echo "Verificando diretórios:"
-ls -la /app/
-echo "Media directory:"
-ls -la /app/media/ 2>/dev/null || echo "Media directory não existe, criando..."
+# Verificar estrutura de diretórios (sem tentar criar como usuário não-root)
+echo "Verificando diretórios existentes:"
+ls -la /app/ | head -10
 
-# Criar diretórios necessários
-mkdir -p /app/media /app/static /app/logs
-chmod -R 755 /app/media /app/static /app/logs
+# Verificar se diretórios essenciais existem
+if [ ! -d "/app/media" ]; then
+    echo "ERRO: Diretório /app/media não existe"
+else
+    echo "Diretório media: OK"
+fi
 
-# Verificar permissões de escrita
+if [ ! -d "/app/static" ]; then
+    echo "ERRO: Diretório /app/static não existe"
+else
+    echo "Diretório static: OK"
+fi
+
+# Verificar permissões de escrita (sem tentar criar se não tiver permissão)
 echo "Testando permissões de escrita:"
-touch /app/media/test_write.tmp 2>/dev/null && rm /app/media/test_write.tmp && echo "Media: OK" || echo "Media: FAIL"
+if [ -w "/app/media" ]; then
+    touch /app/media/test_write.tmp 2>/dev/null && rm /app/media/test_write.tmp 2>/dev/null && echo "Media: OK" || echo "Media: PARTIAL"
+else
+    echo "Media: NO_WRITE_PERMISSION"
+fi
 
-# Verificar conectividade
+# Verificar conectividade (com timeout)
 echo "Testando conectividade:"
-ping -c 1 nissei.com >/dev/null 2>&1 && echo "Nissei.com: OK" || echo "Nissei.com: FAIL"
+timeout 5 ping -c 1 google.com >/dev/null 2>&1 && echo "Internet: OK" || echo "Internet: FAIL"
+timeout 5 ping -c 1 nissei.com >/dev/null 2>&1 && echo "Nissei.com: OK" || echo "Nissei.com: FAIL"
 
 # Aguardar banco de dados se necessário
 if [ "$DATABASE_HOST" ]; then
     echo "Aguardando banco de dados..."
-    while ! nc -z $DATABASE_HOST ${DATABASE_PORT:-5432}; do
-        sleep 1
-    done
-    echo "Banco de dados disponível"
+    timeout 30 bash -c 'until nc -z $DATABASE_HOST ${DATABASE_PORT:-5432}; do sleep 1; done'
+    if [ $? -eq 0 ]; then
+        echo "Banco de dados disponível"
+    else
+        echo "WARNING: Timeout aguardando banco de dados"
+    fi
 fi
 
 # Executar migrações Django
 echo "Executando migrações Django..."
-python3 manage.py migrate --noinput || echo "WARNING: Falha nas migrações"
+python manage.py migrate --noinput 2>&1 || echo "WARNING: Falha nas migrações"
 
-# Coletar arquivos estáticos
+# Coletar arquivos estáticos (sem --clear para evitar problemas de permissão)
 echo "Coletando arquivos estáticos..."
-python3 manage.py collectstatic --noinput --clear || echo "WARNING: Falha nos arquivos estáticos"
+python manage.py collectstatic --noinput 2>&1 || echo "WARNING: Falha nos arquivos estáticos"
+
+# Verificar se o servidor pode iniciar
+echo "Verificando configuração Django..."
+python manage.py check --deploy 2>&1 || echo "WARNING: Problemas na configuração Django"
 
 echo "=== INICIANDO SERVIDOR ==="
+
+# Iniciar servidor Django (usando python, não python3)
 
 if [ "$DJANGO_SUPERUSER_USERNAME" ] && [ "$DJANGO_SUPERUSER_PASSWORD" ]; then
     python manage.py createsuperuser --noinput \
