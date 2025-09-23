@@ -37,9 +37,12 @@ RUN groupadd -r app --gid=1000 && \
 WORKDIR /app
 
 # Criar estrutura de diretórios
-RUN mkdir -p /app/media /app/static /app/staticfiles /app/logs && \
+RUN mkdir -p /app/media /app/static /app/staticfiles /app/logs \
+    /app/media/products \
+    /app/media/images \
+    /app/media/uploads && \
     chown -R app:app /app && \
-    chmod -R 755 /app
+    chmod -R 755 /app    
 
 # Atualizar pip
 RUN python -m pip install --upgrade pip
