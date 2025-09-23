@@ -17,10 +17,10 @@ services:
 
   backend:
     build:
-      context: ./server
+      context: ./backend
     container_name: webscrap-backend
     volumes:
-      - ./server:/app
+      - ./backend:/app
     env_file:
       - .env
     ports:
