@@ -1,31 +1,58 @@
-# Imagem base
-FROM python:3.11-slim
+# Usar versão específica e estável
+FROM selenium/standalone-chrome:4.15.0-20231129
 
 # Variáveis de ambiente
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Diretório de trabalho
+# Instalar Python e dependências como root
+USER root
+
+# Instalar dependências em um único comando (otimizado)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    netcat-traditional \
+    ca-certificates \
+    curl \
+    wget \
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Criar diretório de trabalho e estrutura
 WORKDIR /app
 
-# Instala netcat para o entrypoint.sh poder verificar a conexão com o banco de dados
-# As flags -y e --no-install-recommends são para instalação não interativa e minimalista
-RUN apt-get update && apt-get install -y netcat-traditional --no-install-recommends && rm -rf /var/lib/apt/lists/*
+# Criar diretórios necessários com permissões corretas
+RUN mkdir -p /app/media /app/static /app/logs && \
+    chown -R seluser:seluser /app && \
+    chmod -R 755 /app/media /app/static
 
-# Instala dependências
+# Atualizar pip
+RUN python3 -m pip install --upgrade pip
+
+# Copiar e instalar dependências Python
 COPY requirements.txt .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
-# Copia o resto dos arquivos do projeto
+# Copiar arquivos do projeto
 COPY . .
 
-# Copia e torna executável o script de entrada
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Configurar permissões finais
+RUN chown -R seluser:seluser /app
 
-# Expondo a porta
+# Copiar e configurar entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown seluser:seluser /entrypoint.sh
+
+# Voltar para usuário não-root para segurança
+USER seluser
+
+# Expor porta
 EXPOSE 8000
 
-# Comando padrão. O entrypoint será chamado pelo docker-compose.
-# CMD ["daphne", "app.asgi:application", "-b", "0.0.0.0", "-p", "8000"]
+# Entrypoint
+ENTRYPOINT ["/entrypoint.sh"]

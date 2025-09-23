@@ -700,7 +700,7 @@ class AISeleniumNisseiScraper:
         return True
 
     def _extract_basic_data(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Extração básica com seletores tradicionais"""
+        """Extração básica com seletores tradicionais - INCLUINDO IMAGENS"""
         data = {}
         
         # Nome básico
@@ -721,8 +721,145 @@ class AISeleniumNisseiScraper:
         if description:
             data['description'] = description
         
+        # ✅ ADICIONAR: Extração básica de imagens
+        image_urls = self._extract_images_basic(soup)
+        if image_urls:
+            data['image_urls'] = image_urls
+            print(f"📸 Encontradas {len(image_urls)} imagens via requests básico")
+        else:
+            print("📸 Nenhuma imagem encontrada via requests básico")
+        
         return data
-    
+
+    def _extract_images_basic(self, soup: BeautifulSoup) -> List[str]:
+        """Extração básica de imagens para o método requests"""
+        image_candidates = []
+        
+        # Seletores básicos para imagens de produto
+        basic_selectors = [
+            # Nissei específico
+            '.fotorama img',
+            '.product-image img', 
+            '.gallery-image img',
+            '.main-image img',
+            # Genéricos
+            '[class*="product"] img[src*="catalog"]',
+            '[class*="product"] img[src*="media"]',
+            '[class*="gallery"] img',
+            '.image-container img',
+            # Por data attributes
+            'img[data-zoom-image]',
+            'img[data-large]',
+            'img[data-src*="product"]',
+            'img[data-src*="catalog"]'
+        ]
+        
+        # Buscar imagens usando seletores básicos
+        for selector in basic_selectors:
+            try:
+                images = soup.select(selector)
+                for img in images:
+                    # Tentar múltiplos atributos
+                    for attr in ['data-zoom-image', 'data-large', 'data-src', 'src']:
+                        url = img.get(attr)
+                        if url:
+                            # Resolver URL absoluta
+                            if url.startswith('//'):
+                                full_url = f"https:{url}"
+                            elif url.startswith('/'):
+                                full_url = f"{self.base_url}{url}"
+                            elif url.startswith('http'):
+                                full_url = url
+                            else:
+                                continue
+                            
+                            # Score básico da imagem
+                            score = self._score_product_image_basic(full_url, img)
+                            if score > 0:
+                                image_candidates.append((full_url, score))
+                            break
+            except Exception as e:
+                print(f"Erro ao buscar imagens com seletor {selector}: {e}")
+                continue
+        
+        # Fallback: buscar todas as imagens e filtrar por URL
+        if not image_candidates:
+            print("Fallback: buscando todas as imagens...")
+            all_images = soup.find_all('img')
+            for img in all_images:
+                for attr in ['src', 'data-src', 'data-original']:
+                    url = img.get(attr)
+                    if url and any(keyword in url.lower() for keyword in ['catalog', 'media', 'product', 'gallery']):
+                        # Resolver URL
+                        if url.startswith('//'):
+                            full_url = f"https:{url}"
+                        elif url.startswith('/'):
+                            full_url = f"{self.base_url}{url}"
+                        elif url.startswith('http'):
+                            full_url = url
+                        else:
+                            continue
+                        
+                        score = self._score_product_image_basic(full_url, img)
+                        if score > 0:
+                            image_candidates.append((full_url, score))
+                        break
+        
+        # Ordenar por score e retornar as melhores
+        if image_candidates:
+            # Remover duplicatas
+            unique_candidates = {}
+            for url, score in image_candidates:
+                if url not in unique_candidates or score > unique_candidates[url]:
+                    unique_candidates[url] = score
+            
+            # Ordenar por score
+            sorted_images = sorted(unique_candidates.items(), key=lambda x: x[1], reverse=True)
+            result = [url for url, score in sorted_images[:self.max_images_per_product]]
+            
+            print(f"📸 Imagens selecionadas: {result}")
+            return result
+        
+        return []
+
+    def _score_product_image_basic(self, url: str, img_element) -> int:
+        """Score básico de relevância da imagem"""
+        if not any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+            return -10  # Não é imagem
+        
+        score = 0
+        url_lower = url.lower()
+        
+        # Indicadores positivos na URL (mais simples)
+        positive_keywords = ['product', 'catalog', 'media', 'gallery', 'large', 'zoom']
+        score += sum(2 for keyword in positive_keywords if keyword in url_lower)
+        
+        # Indicadores negativos na URL
+        negative_keywords = ['logo', 'icon', 'sprite', 'button', 'arrow', 'thumb', 'mini']
+        score -= sum(3 for keyword in negative_keywords if keyword in url_lower)
+        
+        # Bonus por data attributes especiais
+        if img_element.get('data-zoom-image') or img_element.get('data-large'):
+            score += 3
+        
+        # Alt text básico
+        alt_text = img_element.get('alt', '').lower()
+        if any(keyword in alt_text for keyword in ['product', 'item', 'foto']):
+            score += 1
+        
+        # Evitar imagens muito pequenas por dimensão
+        width = img_element.get('width')
+        height = img_element.get('height')
+        if width and height:
+            try:
+                w, h = int(width), int(height)
+                if w < 100 or h < 100:  # Muito pequena
+                    score -= 2
+            except:
+                pass
+        
+        return score
+
     def _extract_advanced_data(self, soup: BeautifulSoup) -> Dict[str, Any]:
         """Extração avançada após Selenium"""
         data = {}
@@ -1503,24 +1640,41 @@ class AISeleniumNisseiScraper:
     def _save_product_images(self, product: Product, processed_images: List[Dict]):
         """Salva imagens processadas no banco"""
         try:
+            print(f"DEBUG: Salvando {len(processed_images)} imagens para produto {product.id}")
+            print(f"DEBUG: MEDIA_ROOT = {settings.MEDIA_ROOT}")
+            print(f"DEBUG: Permissões MEDIA_ROOT = {oct(os.stat(settings.MEDIA_ROOT).st_mode)}")
+            
+            # Verificar se diretório existe e é escribível
+            if not os.path.exists(settings.MEDIA_ROOT):
+                os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+                print(f"DEBUG: Criou diretório {settings.MEDIA_ROOT}")
+                
+            # Teste de escrita
+            test_file = os.path.join(settings.MEDIA_ROOT, 'test_write.tmp')
+            try:
+                with open(test_file, 'w') as f:
+                    f.write('test')
+                os.remove(test_file)
+                print("DEBUG: Teste de escrita: OK")
+            except Exception as e:
+                print(f"DEBUG: Erro no teste de escrita: {e}")
+                
+            # ... resto do código original
+            
             # Remover imagens antigas
             ProductImage.objects.filter(product=product).delete()
-            if product.main_image:
-                try:
-                    if hasattr(product.main_image, 'path') and os.path.exists(product.main_image.path):
-                        os.remove(product.main_image.path)
-                except:
-                    pass
-                product.main_image = None
+            print(f"DEBUG: Removeu imagens antigas")
             
             for i, img_data in enumerate(processed_images):
                 try:
                     content_b64 = img_data.get('content_base64', '')
                     if not content_b64:
+                        print(f"DEBUG: Imagem {i} sem conteúdo base64")
                         continue
                     
                     # Decodificar base64
                     content = base64.b64decode(content_b64)
+                    print(f"DEBUG: Imagem {i} decodificada: {len(content)} bytes")
                     
                     # Criar arquivo Django
                     image_file = ContentFile(content, name=img_data['filename'])
@@ -1535,17 +1689,24 @@ class AISeleniumNisseiScraper:
                         original_url=img_data['original_url']
                     )
                     
+                    print(f"DEBUG: Imagem {i} salva: {product_image.image.path}")
+                    
                     # Primeira imagem como principal
                     if i == 0:
                         product.main_image = product_image.image
                         product.save()
+                        print(f"DEBUG: Imagem {i} definida como principal")
                     
                 except Exception as e:
-                    print(f"Erro ao salvar imagem {i+1}: {e}")
+                    print(f"DEBUG: Erro ao salvar imagem {i}: {e}")
+                    import traceback
+                    print(traceback.format_exc())
                     continue
                     
         except Exception as e:
-            print(f"Erro geral ao salvar imagens: {e}")
+            print(f"DEBUG: Erro geral ao salvar imagens: {e}")
+            import traceback
+            print(traceback.format_exc())
     
     def _cleanup_selenium(self):
         """Limpa recursos do Selenium"""
