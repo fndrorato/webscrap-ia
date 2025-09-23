@@ -7,11 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-/server/venv/
-/server/.env
-/server/static/
-/server/staticfiles/
-/server/uploads/
+
+
+/backend/venv/
+/backend/.env
+/backend/static/
+/backend/staticfiles/
+/backend/uploads/
 # Dependency directories
 /web/node_modules/
 /web/dist/
