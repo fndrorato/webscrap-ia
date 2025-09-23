@@ -1,0 +1,48 @@
+services:
+
+  db:
+    image: postgres:15
+    container_name: webscrap-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    restart: always
+    env_file:
+      - .env
+
+  backend:
+    build:
+      context: ./server
+    container_name: webscrap-backend
+    volumes:
+      - ./server:/app
+    env_file:
+      - .env
+    ports:
+      - "4001:8000"
+    depends_on:
+      - db
+      - redis
+    restart: always
+    entrypoint: /entrypoint.sh
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
+  frontend:
+    build:
+      context: ./web
+    container_name: webscrap-frontend
+    env_file:
+      - .env
+    ports:
+      - "4000:3000"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
