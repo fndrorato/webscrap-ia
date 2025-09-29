@@ -6,6 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 
+# ========== ADICIONADO: Variáveis para Selenium ==========
+ENV SE_CACHE_PATH=/tmp/.cache/selenium
+ENV HOME=/tmp
+# =========================================================
+
 # Instalar dependências como root
 USER root
 
@@ -42,7 +47,15 @@ RUN mkdir -p /app/media /app/static /app/staticfiles /app/logs \
     /app/media/images \
     /app/media/uploads && \
     chown -R app:app /app && \
-    chmod -R 755 /app    
+    chmod -R 755 /app
+
+# ========== ADICIONADO: Criar diretórios de cache para Selenium ==========
+RUN mkdir -p /tmp/.cache/selenium && \
+    mkdir -p /app/.cache/selenium && \
+    chmod -R 777 /tmp && \
+    chmod -R 777 /app/.cache && \
+    chown -R app:app /tmp/.cache /app/.cache
+# =========================================================================
 
 # Atualizar pip
 RUN python -m pip install --upgrade pip
@@ -60,6 +73,11 @@ COPY . /app/
 # Ajustar permissões
 RUN chown -R app:app /app && \
     chmod -R 755 /app
+
+# ========== ADICIONADO: Garantir permissões após copiar código ==========
+RUN chmod -R 777 /tmp/.cache && \
+    chmod -R 777 /app/.cache
+# ========================================================================
 
 # Copiar entrypoint
 COPY entrypoint.sh /entrypoint.sh
