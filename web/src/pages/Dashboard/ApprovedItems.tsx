@@ -23,6 +23,9 @@ interface Product {
   images: ProductImage[];
   name: string;
   description: string;
+  price: number;
+  sku_code: string;
+  created_at: string;
   status?: number; // 0: declined, 1: pending, 2: approved
 }
 
