@@ -16,6 +16,9 @@ interface Product {
   images: ProductImage[];
   name: string;
   description: string;
+  price: number;
+  sku_code: string;
+  created_at: string; // Changed from scraped_at to created_at
   status?: number; // 0: declined, 1: pending, 2: approved
 }
 
@@ -29,6 +32,40 @@ interface SearchResultsTableProps {
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ results, onImageClick, onApprove, onDecline }) => {
   const { t } = useTranslation();
 
+  const formatDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.error("Invalid Date string:", dateString);
+        return "Fecha inválida";
+      }
+      return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    } catch (e) {
+      console.error("Error formatting date:", dateString, e);
+      return "Fecha inválida";
+    }
+  };
+
+  const formatPrice = (priceString: string | number) => {
+    if (priceString === null || priceString === undefined || priceString === "") {
+      return "N/A";
+    }
+    let priceNumber: number;
+    if (typeof priceString === 'string') {
+      // Remove everything after the decimal point and then parse as float
+      const cleanedPriceString = priceString.split('.')[0];
+      priceNumber = parseFloat(cleanedPriceString);
+    } else {
+      priceNumber = priceString;
+    }
+
+    if (isNaN(priceNumber)) {
+      console.error("Invalid Price string/number:", priceString);
+      return "N/A";
+    }
+    return priceNumber.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-white dark:bg-gray-800">
@@ -37,6 +74,9 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ results, onImag
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.image')}</th>
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.name')}</th>
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.description')}</th>
+            <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Precio</th>
+            <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Código</th>
+            <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Fecha Hora</th>
             {(onApprove || onDecline) && (
               <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.actions')}</th>
             )}
@@ -55,6 +95,9 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ results, onImag
               </td>
               <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">{product.name}</td>
               <td className="py-4 px-6 text-sm text-gray-500 dark:text-gray-400">{product.description}</td>
+              <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">{formatPrice(product.price)}</td>
+              <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">{product.sku_code}</td>
+              <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">{formatDate(product.created_at)}</td>
               {(onApprove || onDecline) && (
                 <td className="py-4 px-6">
                   {product.status === undefined || product.status === 1 ? (
@@ -62,7 +105,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ results, onImag
                       {onApprove && (
                         <button 
                           onClick={() => onApprove(product.id)} 
-                          className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                          className="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-sm"
                         >
                           {t('search.results.approve')}
                         </button>
@@ -70,7 +113,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ results, onImag
                       {onDecline && (
                         <button 
                           onClick={() => onDecline(product.id)} 
-                          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+                          className="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-sm"
                         >
                           {t('search.results.reject')}
                         </button>

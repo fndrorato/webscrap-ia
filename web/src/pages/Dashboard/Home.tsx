@@ -24,6 +24,9 @@ interface Product {
   images: ProductImage[];
   name: string;
   description: string;
+  price: number; // Add price field
+  sku_code: string; // Add sku_code field
+  created_at: string; // Changed from scraped_at to created_at
   status?: number; // 0: declined, 1: pending, 2: approved
 }
 
@@ -47,7 +50,6 @@ export default function Home() {
     if (!query) return;
     setLoading(true);
     setError(null);
-    setResults([]);
 
     try {
       const response = await axios.post<SearchResponse>('/api/v1/products/nissei-search-detailed/', {
@@ -56,9 +58,9 @@ export default function Home() {
         max_detailed: 2,
         max_images: 3
       });
-
+      console.log(response.data);
       if (response.data.success) {
-        setResults(response.data.database_results.products);
+        setResults((prevResults) => [...response.data.database_results.products, ...prevResults]);
       } else {
         setError("La búsqueda no tuvo éxito.");
       }

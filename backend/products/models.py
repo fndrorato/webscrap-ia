@@ -17,6 +17,7 @@ class Product(models.Model):
     original_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     url = models.URLField()
+    sku_code = models.CharField(max_length=100, blank=True, null=True)
     
     # Campo para múltiplas imagens
     main_image = models.ImageField(upload_to='products/images/', null=True, blank=True)

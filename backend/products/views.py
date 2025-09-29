@@ -158,6 +158,11 @@ def nissei_search_detailed(request):
                         'suggestion': 'Configure uma IA (Claude ou OpenAI) no Django Admin',
                         'available_configs': list(Configuration.objects.values_list('name', flat=True))
                     }, status=status.HTTP_400_BAD_REQUEST)
+
+            else:
+                max_results = min(max(configuration.max_results or 10, 1), 50)
+                max_detailed = min(max(configuration.max_detailed or 10, 1), 10)
+                max_images = min(max(configuration.max_images or 3, 1), 8)                
         
         # 2. BUSCAR OU CRIAR SITE NISSEI
         site, created = Site.objects.get_or_create(
@@ -300,7 +305,8 @@ def nissei_search_detailed(request):
             }
 
             print(f"View nissei_search_detailed finalizada com sucesso")
-            
+
+
             return Response(response_data, status=status.HTTP_200_OK)
             
         finally:
