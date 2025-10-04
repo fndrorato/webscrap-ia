@@ -60,7 +60,7 @@ export default function Home() {
       });
       console.log(response.data);
       if (response.data.success) {
-        setResults((prevResults) => [...response.data.database_results.products, ...prevResults]);
+        setResults(response.data.database_results.products);
       } else {
         setError("La búsqueda no tuvo éxito.");
       }

@@ -80,6 +80,7 @@ class AISeleniumNisseiScraper:
             print(f"Modelo não suportado: {self.configuration.model_integration}")
             return False
         
+        
         print(f"IA configurada: {self.configuration.model_integration}")
         return True
     
@@ -119,7 +120,8 @@ class AISeleniumNisseiScraper:
                 "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
             )
             
-            print("✅ Selenium configurado")
+            date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{date_time}]✅ Selenium configurado")
             
         except Exception as e:
             print(f"❌ Erro ao configurar Selenium: {e}")
