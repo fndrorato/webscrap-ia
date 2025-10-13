@@ -81,7 +81,18 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
-    }
+    },
+    'oracle_db': {
+        'ENGINE': 'django.db.backends.oracle', # A engine do Django para Oracle
+        'NAME': config('ORACLE_SERVICE_NAME'),
+        'USER': config('ORACLE_USER'),
+        'PASSWORD': config('ORACLE_PASSWORD'),
+        'HOST': config('ORACLE_HOST'),
+        'PORT': config('ORACLE_PORT'),
+        'OPTIONS': {
+            'service_name': config('ORACLE_SERVICE_NAME'),
+        },
+    }    
 }
 
 
