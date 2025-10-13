@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     xvfb \
     ca-certificates \
+    libaio-dev \
     --no-install-recommends
 
 # Instalar Google Chrome
@@ -32,13 +33,6 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     rm -rf /var/lib/apt/lists/*
 
 # ========== ORACLE INSTANT CLIENT ==========
-RUN apt-get update && apt-get install -y \
-    libaio1 \
-    libaio-dev \
-    alien \
-    --no-install-recommends
-
-# Baixar e instalar Oracle Instant Client
 RUN mkdir -p /opt/oracle && \
     cd /opt/oracle && \
     wget https://download.oracle.com/otn_software/linux/instantclient/2115000/instantclient-basic-linux.x64-21.15.0.0.0dbru.zip && \
@@ -54,8 +48,9 @@ RUN mkdir -p /opt/oracle && \
 ENV ORACLE_HOME=/opt/oracle/instantclient_21_15
 ENV LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH
 ENV PATH=$ORACLE_HOME:$PATH
+# ==========================================
     
-
+    
 # Limpar cache
 RUN apt-get autoremove -y && apt-get clean
 
