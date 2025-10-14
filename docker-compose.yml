@@ -25,7 +25,7 @@ services:
     env_file:
       - .env
     ports:
-      - "4001:8000"
+      - "5001:8000"
     depends_on:
       - db
     restart: always
@@ -39,7 +39,7 @@ services:
     env_file:
       - .env
     ports:
-      - "4000:3000"
+      - "5000:3000"
     depends_on:
       - backend
     restart: always
