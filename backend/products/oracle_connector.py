@@ -1,30 +1,30 @@
-import cx_Oracle
+import oracledb
 from django.conf import settings
 
 
 def get_oracle_connection():
     """
-    Retorna um objeto de conexão cx_Oracle usando as configurações definidas
+    Retorna um objeto de conexão oracledb usando as configurações definidas
     no settings.py para o banco 'oracle_db'.
     """
     db_settings = settings.DATABASES['oracle_db']
     
-    # cx_Oracle usa a DSN (Data Source Name) no formato HOST:PORT/SERVICE_NAME
-    dsn = cx_Oracle.makedsn(
+    # oracledb usa a DSN (Data Source Name) no formato HOST:PORT/SERVICE_NAME
+    dsn = oracledb.makedsn(
         host=db_settings['HOST'],
         port=db_settings['PORT'],
-        service_name=db_settings['NAME'] # 'NAME' contém o SERVICE_NAME no seu settings
+        service_name=db_settings['NAME']  # 'NAME' contém o SERVICE_NAME no seu settings
     )
-
+    
     try:
         # Tenta a conexão com o banco Oracle
-        conn = cx_Oracle.connect(
+        conn = oracledb.connect(
             user=db_settings['USER'],
             password=db_settings['PASSWORD'],
             dsn=dsn
         )
         return conn
-    except cx_Oracle.Error as e:
-        error, = e.args
-        print(f"Erro de Conexão Oracle: {error.code} - {error.message}")
+    except oracledb.Error as e:
+        error_obj, = e.args
+        print(f"Erro de Conexão Oracle: {error_obj.code} - {error_obj.message}")
         raise ConnectionError("Falha ao conectar ao banco de dados Oracle.")

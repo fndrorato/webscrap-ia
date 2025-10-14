@@ -1,9 +1,9 @@
 # Seu_App/oracle_sync.py
-import cx_Oracle
-import requests # Necessário para o BLOB/URL da imagem
+import oracledb
+import requests  # Necessário para o BLOB/URL da imagem
 from django.utils import timezone
-from io import BytesIO # Para lidar com os bytes da imagem
-from .oracle_connector import get_oracle_connection # Importa a nova função de conexão
+from io import BytesIO  # Para lidar com os bytes da imagem
+from .oracle_connector import get_oracle_connection  # Importa a nova função de conexão
 
 
 COD_EMPRESA = '1' 
@@ -13,7 +13,7 @@ COD_USUARIO_DB = 'RINV'
 def sync_products_to_oracle(serialized_products):
     """
     Sincroniza uma lista de produtos serializados para as tabelas Oracle
-    ST_ARTICULOS_PROV e ST_IMAG_ARTICULOS usando cx_Oracle.
+    ST_ARTICULOS_PROV e ST_IMAG_ARTICULOS usando oracledb.
     """
     sync_results = {'success_count': 0, 'error_count': 0, 'errors': []}
     oracle_conn = None
@@ -92,7 +92,7 @@ def sync_products_to_oracle(serialized_products):
                         INSERT INTO ST_ARTICULOS_PROV (
                             COD_EMPRESA, COD_ARTICULO, DESCRIPCION, PRECIO_BASE, COSTO_PROM_EXT, 
                             DESC_CORTA, LINK_WEB, PALABRA_CLAVE, FEC_PROCESO, COD_PROVEEDOR, 
-                            COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUCTO
+                            COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUTO
                         ) VALUES (
                             :cod_empresa, :cod_articulo, :description, :price_base, :original_price, 
                             :desc_corta, :url, :brand, :fec_proceso, :cod_proveedor, 
@@ -149,11 +149,11 @@ def sync_products_to_oracle(serialized_products):
                     try:
                         # 1. Baixa a imagem
                         response = requests.get(image_url, timeout=10)
-                        response.raise_for_status() # Levanta HTTPError para códigos 4xx/5xx
+                        response.raise_for_status()  # Levanta HTTPError para códigos 4xx/5xx
                         image_bytes = response.content
                         
                         # 2. Cria um objeto LOB (Large Object) para o BLOB
-                        lob_data = cursor.var(cx_Oracle.BLOB)
+                        lob_data = cursor.var(oracledb.DB_TYPE_BLOB)
                         
                         # 3. Executa o INSERT, pegando o LOB handle de volta
                         cursor.execute(sql_insert_image, {
@@ -161,7 +161,7 @@ def sync_products_to_oracle(serialized_products):
                             'cod_articulo': sku,
                             'nro_orden': index + 1,
                             'cod_usuario': COD_USUARIO_DB,
-                            'lob_data': lob_data # O bind variable que receberá o BLOB handle
+                            'lob_data': lob_data  # O bind variable que receberá o BLOB handle
                         })
                         
                         # 4. Escreve os bytes da imagem no LOB
@@ -179,12 +179,12 @@ def sync_products_to_oracle(serialized_products):
                 oracle_conn.commit()
                 sync_results['success_count'] += 1
 
-        except cx_Oracle.Error as db_e:
+        except oracledb.Error as db_e:
             # Erro específico do Oracle
             oracle_conn.rollback()
-            error, = db_e.args
+            error_obj, = db_e.args
             sync_results['error_count'] += 1
-            sync_results['errors'].append(f"Erro DB Oracle SKU {sku}: {error.code} - {error.message}")
+            sync_results['errors'].append(f"Erro DB Oracle SKU {sku}: {error_obj.code} - {error_obj.message}")
             
         except Exception as e:
             # Outros erros (ex: erro de tipo de dados)
