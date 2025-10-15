@@ -1,14 +1,37 @@
 import oracledb
 from django.conf import settings
+import os
 
 
 # Inicializa o modo "thick" do oracledb (necessário para Oracle < 12.1)
 # Isso deve ser chamado UMA VEZ antes de qualquer conexão
-try:
-    oracledb.init_oracle_client()
-except Exception as e:
-    # Se já foi inicializado ou não encontrou o Instant Client
-    print(f"Aviso ao inicializar Oracle Client: {e}")
+def _init_thick_mode():
+    """Inicializa o thick mode do oracledb uma única vez."""
+    if not hasattr(_init_thick_mode, '_initialized'):
+        try:
+            # Caminho do Oracle Instant Client no Docker
+            lib_dir = os.environ.get('ORACLE_HOME', '/opt/oracle/instantclient_21_15')
+            
+            print(f"Inicializando Oracle Client em modo THICK...")
+            print(f"Caminho do Instant Client: {lib_dir}")
+            
+            # Verifica se o diretório existe
+            if not os.path.exists(lib_dir):
+                raise Exception(f"Diretório do Instant Client não encontrado: {lib_dir}")
+            
+            # Inicializa com o caminho explícito
+            oracledb.init_oracle_client(lib_dir=lib_dir)
+            print("✅ Oracle Client inicializado com sucesso em modo THICK!")
+            
+            _init_thick_mode._initialized = True
+            
+        except Exception as e:
+            print(f"❌ ERRO ao inicializar Oracle Client: {e}")
+            raise
+
+
+# Chama a inicialização quando o módulo é importado
+_init_thick_mode()
 
 
 def get_oracle_connection():
