@@ -2,6 +2,15 @@ import oracledb
 from django.conf import settings
 
 
+# Inicializa o modo "thick" do oracledb (necessário para Oracle < 12.1)
+# Isso deve ser chamado UMA VEZ antes de qualquer conexão
+try:
+    oracledb.init_oracle_client()
+except Exception as e:
+    # Se já foi inicializado ou não encontrou o Instant Client
+    print(f"Aviso ao inicializar Oracle Client: {e}")
+
+
 def get_oracle_connection():
     """
     Retorna um objeto de conexão oracledb usando as configurações definidas

@@ -32,24 +32,24 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
     apt-get install -y google-chrome-stable && \
     rm -rf /var/lib/apt/lists/*
 
-# ========== ORACLE INSTANT CLIENT ==========
-RUN mkdir -p /opt/oracle && \
-    cd /opt/oracle && \
-    wget https://download.oracle.com/otn_software/linux/instantclient/2115000/instantclient-basic-linux.x64-21.15.0.0.0dbru.zip && \
-    wget https://download.oracle.com/otn_software/linux/instantclient/2115000/instantclient-sdk-linux.x64-21.15.0.0.0dbru.zip && \
-    unzip instantclient-basic-linux.x64-21.15.0.0.0dbru.zip && \
-    unzip instantclient-sdk-linux.x64-21.15.0.0.0dbru.zip && \
-    rm -f *.zip && \
-    cd instantclient_21_15 && \
-    echo /opt/oracle/instantclient_21_15 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+# ========== ORACLE INSTANT CLIENT (para thick mode) ==========
+RUN mkdir -p /opt/oracle
+
+# Baixar Oracle Instant Client Basic
+WORKDIR /opt/oracle
+RUN wget -q https://download.oracle.com/otn_software/linux/instantclient/2115000/instantclient-basic-linux.x64-21.15.0.0.0dbru.zip && \
+    unzip -q instantclient-basic-linux.x64-21.15.0.0.0dbru.zip && \
+    rm -f *.zip
+
+# Configurar biblioteca Oracle
+RUN echo /opt/oracle/instantclient_21_15 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
-# Configurar variáveis de ambiente para Oracle
+# Variáveis de ambiente Oracle
 ENV ORACLE_HOME=/opt/oracle/instantclient_21_15
 ENV LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH
 ENV PATH=$ORACLE_HOME:$PATH
-# ==========================================
-    
+# =============================================================
     
 # Limpar cache
 RUN apt-get autoremove -y && apt-get clean
