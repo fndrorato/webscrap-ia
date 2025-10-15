@@ -1,5 +1,4 @@
 services:
-
   db:
     image: postgres:15
     container_name: webscrap-db
@@ -19,9 +18,13 @@ services:
     build:
       context: ./backend
     container_name: webscrap-backend
+    # IMPORTANTE: Rodar como root para ter permissões nos volumes
+    user: "0:0"
     volumes:
       - ./backend:/app
-      - ./media:/app/media
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+      - logs_data:/app/logs
     env_file:
       - .env
     ports:
@@ -46,3 +49,6 @@ services:
 
 volumes:
   postgres_data:
+  media_data:
+  static_data:
+  logs_data:

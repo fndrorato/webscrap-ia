@@ -1,6 +1,17 @@
 #!/bin/bash
+set -e
 
+# Cores para output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "=========================================="
 echo "=== INICIANDO CONTAINER ==="
+echo "=========================================="
+
+# ========== INFORMAÇÕES DO SISTEMA ==========
 echo "User: $(whoami)"
 echo "UID: $(id -u)"
 echo "GID: $(id -g)"
@@ -9,79 +20,156 @@ echo "Python version: $(python --version)"
 
 # Verificar se Chrome está instalado
 if command -v google-chrome >/dev/null 2>&1; then
-    echo "Chrome version: $(google-chrome --version)"
+    echo -e "${GREEN}Chrome version: $(google-chrome --version)${NC}"
 else
-    echo "WARNING: Chrome não encontrado"
+    echo -e "${RED}WARNING: Chrome não encontrado${NC}"
 fi
 
 # Verificar ChromeDriver
 if command -v chromedriver >/dev/null 2>&1; then
-    echo "ChromeDriver version: $(chromedriver --version)"
+    echo -e "${GREEN}ChromeDriver version: $(chromedriver --version)${NC}"
 else
-    echo "WARNING: ChromeDriver não encontrado"
+    echo -e "${YELLOW}WARNING: ChromeDriver não encontrado (será baixado pelo webdriver-manager)${NC}"
 fi
 
-# Verificar estrutura de diretórios (sem tentar criar como usuário não-root)
-echo "Verificando diretórios existentes:"
-ls -la /app/ | head -10
-
-# Verificar se diretórios essenciais existem
-if [ ! -d "/app/media" ]; then
-    echo "ERRO: Diretório /app/media não existe"
-else
-    echo "Diretório media: OK"
-fi
-
-if [ ! -d "/app/static" ]; then
-    echo "ERRO: Diretório /app/static não existe"
-else
-    echo "Diretório static: OK"
-fi
-
-# Verificar permissões de escrita (sem tentar criar se não tiver permissão)
-echo "Testando permissões de escrita:"
-if [ -w "/app/media" ]; then
-    touch /app/media/test_write.tmp 2>/dev/null && rm /app/media/test_write.tmp 2>/dev/null && echo "Media: OK" || echo "Media: PARTIAL"
-else
-    echo "Media: NO_WRITE_PERMISSION"
-fi
-
-# Verificar conectividade (com timeout)
-echo "Testando conectividade:"
-timeout 5 ping -c 1 google.com >/dev/null 2>&1 && echo "Internet: OK" || echo "Internet: FAIL"
-timeout 5 ping -c 1 nissei.com >/dev/null 2>&1 && echo "Nissei.com: OK" || echo "Nissei.com: FAIL"
-
-# Aguardar banco de dados se necessário
-if [ "$DATABASE_HOST" ]; then
-    echo "Aguardando banco de dados..."
-    timeout 30 bash -c 'until nc -z $DATABASE_HOST ${DATABASE_PORT:-5432}; do sleep 1; done'
-    if [ $? -eq 0 ]; then
-        echo "Banco de dados disponível"
+# ========== VERIFICAÇÃO ORACLE CLIENT ==========
+echo ""
+echo "Verificando Oracle Instant Client..."
+if [ -d "/opt/oracle/instantclient_21_15" ]; then
+    echo -e "${GREEN}✓ Oracle Instant Client: INSTALADO${NC}"
+    echo "  Path: /opt/oracle/instantclient_21_15"
+    
+    # Verificar libaio
+    if ldconfig -p | grep -q libaio; then
+        echo -e "${GREEN}✓ libaio: OK${NC}"
     else
-        echo "WARNING: Timeout aguardando banco de dados"
+        echo -e "${RED}✗ libaio: NÃO ENCONTRADA${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ Oracle Instant Client: NÃO INSTALADO (modo thin será usado)${NC}"
+fi
+
+# ========== CORREÇÃO DE PERMISSÕES ==========
+echo ""
+echo "Verificando e corrigindo permissões..."
+
+# Função para verificar e corrigir permissões
+fix_permissions() {
+    local dir=$1
+    
+    # Verifica se diretório existe
+    if [ ! -d "$dir" ]; then
+        echo -e "${YELLOW}⚠ $dir: NÃO EXISTE (tentando criar...)${NC}"
+        mkdir -p "$dir" 2>/dev/null || {
+            echo -e "${RED}✗ Falha ao criar $dir${NC}"
+            return 1
+        }
+    fi
+    
+    # Tenta corrigir permissões (só funciona se for root ou dono)
+    chmod -R 775 "$dir" 2>/dev/null || true
+    
+    # Verifica se tem permissão de escrita
+    if [ -w "$dir" ]; then
+        # Testa escrita real
+        if touch "$dir/.test_write" 2>/dev/null; then
+            rm -f "$dir/.test_write" 2>/dev/null
+            echo -e "${GREEN}✓ $dir: OK${NC}"
+            return 0
+        else
+            echo -e "${YELLOW}⚠ $dir: PERMISSÃO LIMITADA${NC}"
+            return 1
+        fi
+    else
+        echo -e "${RED}✗ $dir: SEM PERMISSÃO DE ESCRITA${NC}"
+        return 1
+    fi
+}
+
+# Verificar e corrigir diretórios críticos
+fix_permissions "/app/media"
+fix_permissions "/app/media/products"
+fix_permissions "/app/media/images"
+fix_permissions "/app/media/uploads"
+fix_permissions "/app/static"
+fix_permissions "/app/staticfiles"
+fix_permissions "/app/logs"
+fix_permissions "/tmp/.cache/selenium"
+fix_permissions "/app/.cache/selenium"
+
+# ========== ESTRUTURA DE DIRETÓRIOS ==========
+echo ""
+echo "Estrutura de diretórios:"
+ls -la /app/ | head -15
+
+# ========== TESTE DE CONECTIVIDADE ==========
+echo ""
+echo "Testando conectividade:"
+
+# Internet
+if timeout 5 ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+    echo -e "${GREEN}Internet: OK${NC}"
+else
+    echo -e "${RED}Internet: FAIL${NC}"
+fi
+
+# Site específico
+if timeout 5 ping -c 1 nissei.com >/dev/null 2>&1; then
+    echo -e "${GREEN}Nissei.com: OK${NC}"
+else
+    echo -e "${YELLOW}Nissei.com: FAIL${NC}"
+fi
+
+# ========== AGUARDAR BANCO DE DADOS ==========
+if [ "$DATABASE_HOST" ]; then
+    echo ""
+    echo "Aguardando banco de dados em $DATABASE_HOST:${DATABASE_PORT:-5432}..."
+    timeout 30 bash -c "until nc -z $DATABASE_HOST ${DATABASE_PORT:-5432}; do sleep 1; done"
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Banco de dados disponível${NC}"
+    else
+        echo -e "${RED}WARNING: Timeout aguardando banco de dados${NC}"
     fi
 fi
 
-# Executar migrações Django
+# ========== MIGRAÇÕES DJANGO ==========
+echo ""
 echo "Executando migrações Django..."
-python manage.py migrate --noinput 2>&1 || echo "WARNING: Falha nas migrações"
-
-# Coletar arquivos estáticos (sem --clear para evitar problemas de permissão)
-echo "Coletando arquivos estáticos..."
-python manage.py collectstatic --noinput 2>&1 || echo "WARNING: Falha nos arquivos estáticos"
-
-# Verificar se o servidor pode iniciar
-echo "Verificando configuração Django..."
-python manage.py check --deploy 2>&1 || echo "WARNING: Problemas na configuração Django"
-
-echo "=== INICIANDO SERVIDOR ==="
-
-# Iniciar servidor Django (usando python, não python3)
-
-if [ "$DJANGO_SUPERUSER_USERNAME" ] && [ "$DJANGO_SUPERUSER_PASSWORD" ]; then
-    python manage.py createsuperuser --noinput \
-      --username "$DJANGO_SUPERUSER_USERNAME" \
-      --email "$DJANGO_SUPERUSER_EMAIL" || true
+if python manage.py migrate --noinput; then
+    echo -e "${GREEN}Migrações executadas com sucesso${NC}"
+else
+    echo -e "${RED}WARNING: Falha nas migrações${NC}"
 fi
 
+# ========== COLETAR ARQUIVOS ESTÁTICOS ==========
+echo ""
+echo "Coletando arquivos estáticos..."
+if python manage.py collectstatic --noinput 2>&1; then
+    echo -e "${GREEN}Arquivos estáticos coletados${NC}"
+else
+    echo -e "${YELLOW}WARNING: Falha nos arquivos estáticos (pode ser normal)${NC}"
+fi
+
+# ========== VERIFICAÇÃO DJANGO ==========
+echo ""
+echo "Verificando configuração Django..."
+python manage.py check 2>&1 || echo -e "${YELLOW}WARNING: Problemas na configuração Django${NC}"
+
+# ========== CRIAR SUPERUSUÁRIO ==========
+if [ "$DJANGO_SUPERUSER_USERNAME" ] && [ "$DJANGO_SUPERUSER_PASSWORD" ]; then
+    echo ""
+    echo "Criando superusuário..."
+    python manage.py createsuperuser --noinput \
+        --username "$DJANGO_SUPERUSER_USERNAME" \
+        --email "${DJANGO_SUPERUSER_EMAIL:-admin@example.com}" 2>/dev/null || \
+        echo -e "${YELLOW}Superusuário já existe ou falha na criação${NC}"
+fi
+
+# ========== INICIAR SERVIDOR ==========
+echo ""
+echo "=========================================="
+echo "=== INICIANDO SERVIDOR ==="
+echo "=========================================="
+
+# Executar comando passado como argumento (geralmente gunicorn ou runserver)
 exec "$@"

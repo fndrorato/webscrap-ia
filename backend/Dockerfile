@@ -18,8 +18,9 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     xvfb \
     ca-certificates \
-    libaio-dev \
-    --no-install-recommends
+    libaio1t64 \
+    --no-install-recommends && \
+    ln -sf /usr/lib/x86_64-linux-gnu/libaio.so.1t64 /usr/lib/x86_64-linux-gnu/libaio.so.1 || true
 
 # Instalar Google Chrome
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg && \
