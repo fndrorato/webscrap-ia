@@ -1,55 +1,40 @@
-import { useEffect, useRef } from "react";
-
-import { Link } from "react-router";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 
 const AppHeader: React.FC = () => {
+  const { t } = useTranslation();
+  const { logout } = useAuth();
 
-
-
-
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
+  const handleLogout = () => {
+    logout();
+  };
 
   return (
-    <header className="sticky top-0 flex w-full bg-white border-gray-200 z-99999 dark:border-gray-800 dark:bg-gray-900 lg:border-b">
-      <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
-        <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
-          
-
-          <Link to="/" className="lg:hidden">
-            <img
-              className="dark:hidden"
-              src="./images/logo/logo.svg"
-              alt="Logo"
-            />
-            <img
-              className="hidden dark:block"
-              src="./images/logo/logo-dark.svg"
-              alt="Logo"
-            />
-          </Link>
-
-
-          <div className="hidden lg:block">
-        
-          </div>
-        </div>
-
-      </div>
+    <header className="bg-gray-800 text-white p-4">
+      <nav className="container mx-auto flex justify-between items-center">
+        <Link to="/" className="text-xl font-bold">
+          {t('app.name')}
+        </Link>
+        <ul className="flex space-x-4">
+          <li>
+            <Link to="/" className="hover:text-gray-300">
+              {t('Home')}
+            </Link>
+          </li>
+          <li>
+            <Link to="/approved-items" className="hover:text-gray-300">
+              {t('Approved Items')}
+            </Link>
+          </li>
+          <li>
+            <button onClick={handleLogout} className="hover:text-gray-300 bg-transparent border-none cursor-pointer text-white">
+              {t('Cerrar Sesión')}
+            </button>
+          </li>
+        </ul>
+      </nav>
     </header>
   );
 };

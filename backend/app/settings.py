@@ -81,19 +81,20 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
-    },
-    'oracle_db': {
-        'ENGINE': 'django.db.backends.oracle', # A engine do Django para Oracle
-        'NAME': config('ORACLE_SERVICE_NAME', default='ORCL'),
-        'USER': config('ORACLE_USER', default='root'),
-        'PASSWORD': config('ORACLE_PASSWORD', default='abc1537'),
-        'HOST': config('ORACLE_HOST', default='10.1.1.90'),
-        'PORT': config('ORACLE_PORT', default='1521'),
-        'OPTIONS': {
-            'service_name': config('ORACLE_SERVICE_NAME', default='ORCL'),
-        },
-    }    
+    }   
 }
+
+# ========== CONFIGURAÇÕES ORACLE (para autenticação) ==========
+ORACLE_HOST = config('ORACLE_HOST', default='10.1.1.90')
+ORACLE_PORT = config('ORACLE_PORT', default='1521')
+ORACLE_SERVICE_NAME = config('ORACLE_SERVICE_NAME', default='orcl')
+
+# ========== AUTHENTICATION BACKENDS ==========
+AUTHENTICATION_BACKENDS = [
+    'authentication.backends.OracleAuthBackend',  # Seu backend customizado
+    'django.contrib.auth.backends.ModelBackend',  # Backend padrão (fallback)
+]
+
 
 
 # Password validation

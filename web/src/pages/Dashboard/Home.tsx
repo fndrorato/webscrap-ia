@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import SearchIcon from '../../icons/SearchIcon';
 import SearchResultsTable from '../../components/search/SearchResultsTable';
 import ImageModal from '../../components/search/ImageModal';
-import FullScreenLoadingOverlay from '../../components/common/FullScreenLoadingOverlay';
+import LocalizedLoadingOverlay from '../../components/common/LocalizedLoadingOverlay';
 
 // Define interfaces for the API response
 interface ProductImage {
@@ -141,30 +141,31 @@ export default function Home() {
                 className="dark:bg-dark-900 h-14 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-xl text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:bg-white/[0.03] dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
               />
 
-              <button className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
+              {/* <button className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400">
                 <span> ⌘ </span>
                 <span> K </span>
-              </button>
+              </button> */}
             </div>
           </div>
 
-          {loading && <p>{t('search.loading')}</p>}
           {error && <p className="text-red-500">{t('search.error')}</p>}
 
-          {results.length > 0 && (
-            <SearchResultsTable
-              results={results} 
-              onImageClick={handleImageClick} 
-              onApprove={handleApprove} 
-              onDecline={handleDecline} 
-            />
-          )}
+          <div className="relative">
+            {results.length > 0 && (
+              <SearchResultsTable
+                results={results} 
+                onImageClick={handleImageClick} 
+                onApprove={handleApprove} 
+                onDecline={handleDecline} 
+              />
+            )}
+            <LocalizedLoadingOverlay isLoading={loading} />
+          </div>
 
           {/* Image Modal */}
           {isModalOpen && <ImageModal images={selectedImages} onClose={handleCloseModal} />}
         </div>
       </div>
-      <FullScreenLoadingOverlay isLoading={loading} />
     </>
   );
 }
