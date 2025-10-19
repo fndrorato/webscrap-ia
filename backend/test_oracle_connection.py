@@ -10,7 +10,7 @@ import oracledb
 
 # ========== CONFIGURAÇÕES DESCOBERTAS ==========
 # Baseado na análise do seu servidor Oracle
-ORACLE_HOST = "192.168.10.25"
+ORACLE_HOST = "10.1.1.90"
 ORACLE_PORT = 1521
 ORACLE_SERVICE = "orcl"  # Confirmado via queries no banco
 
@@ -18,10 +18,7 @@ ORACLE_SERVICE = "orcl"  # Confirmado via queries no banco
 ORACLE_USER = "EDSYSTEM"  # Oracle usa 'system', não 'root'!
 ORACLE_PASSWORD = "aeds"  # ← COLOQUE A SENHA CORRETA
 
-# NOTA IMPORTANTE:
-# Oracle NÃO tem usuário "root"!
-# Usuários comuns: system, sys, scott, ou usuários customizados
-# Se você não sabe a senha do 'system', peça ao DBA ou crie um novo usuário
+
 # ===============================================
 
 def test_step(step_num, description, func):
