@@ -82,10 +82,10 @@ export default function SignInForm({ onLoginSuccess }: SignInFormProps) {
                     {t('email')} <span className="text-error-500">*</span>{" "}
                   </Label>
                   <Input
-                    placeholder="info@gmail.com"
+                    placeholder="usuario"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    type="email"
+                    type="text"
                     required
                   />
                 </div>
