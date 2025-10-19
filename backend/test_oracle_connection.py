@@ -10,13 +10,13 @@ import oracledb
 
 # ========== CONFIGURAÇÕES DESCOBERTAS ==========
 # Baseado na análise do seu servidor Oracle
-ORACLE_HOST = "10.1.1.90"
+ORACLE_HOST = "192.168.10.25"
 ORACLE_PORT = 1521
 ORACLE_SERVICE = "orcl"  # Confirmado via queries no banco
 
 # ⚠️ AJUSTE APENAS ESTES DOIS:
-ORACLE_USER = "INV"  # Oracle usa 'system', não 'root'!
-ORACLE_PASSWORD = "abc1537"  # ← COLOQUE A SENHA CORRETA
+ORACLE_USER = "EDSYSTEM"  # Oracle usa 'system', não 'root'!
+ORACLE_PASSWORD = "aeds"  # ← COLOQUE A SENHA CORRETA
 
 # NOTA IMPORTANTE:
 # Oracle NÃO tem usuário "root"!
