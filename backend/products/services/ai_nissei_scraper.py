@@ -7,6 +7,7 @@ import json
 import uuid
 from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from django.utils import timezone
 from django.core.files.base import ContentFile
