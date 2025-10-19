@@ -13,3 +13,4 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     View customizada para obter token JWT autenticando contra Oracle
     """
     serializer_class = CustomTokenObtainPairSerializer
+      

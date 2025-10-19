@@ -28,6 +28,10 @@ interface Product {
   sku_code: string; // Add sku_code field
   created_at: string; // Changed from scraped_at to created_at
   status?: number; // 0: declined, 1: pending, 2: approved
+  selectedProveedor?: string;
+  selectedMarca?: string;
+  selectedRubro?: string;
+  selectedGrupo?: string;
 }
 
 interface SearchResponse {
@@ -116,6 +120,38 @@ export default function Home() {
     handleUpdateStatus(productId, 0); // 0 for declined
   };
 
+  const handleProveedorChange = (productId: number, value: string) => {
+    setResults((prevResults) =>
+      prevResults.map((product) =>
+        product.id === productId ? { ...product, selectedProveedor: value } : product
+      )
+    );
+  };
+
+  const handleMarcaChange = (productId: number, value: string) => {
+    setResults((prevResults) =>
+      prevResults.map((product) =>
+        product.id === productId ? { ...product, selectedMarca: value } : product
+      )
+    );
+  };
+
+  const handleRubroChange = (productId: number, value: string) => {
+    setResults((prevResults) =>
+      prevResults.map((product) =>
+        product.id === productId ? { ...product, selectedRubro: value, selectedGrupo: undefined } : product
+      )
+    );
+  };
+
+  const handleGrupoChange = (productId: number, value: string) => {
+    setResults((prevResults) =>
+      prevResults.map((product) =>
+        product.id === productId ? { ...product, selectedGrupo: value } : product
+      )
+    );
+  };
+
   return (
     <>
       <PageMeta
@@ -157,6 +193,10 @@ export default function Home() {
                 onImageClick={handleImageClick} 
                 onApprove={handleApprove} 
                 onDecline={handleDecline} 
+                onProveedorChange={handleProveedorChange}
+                onMarcaChange={handleMarcaChange}
+                onRubroChange={handleRubroChange}
+                onGrupoChange={handleGrupoChange}
               />
             )}
             <LocalizedLoadingOverlay isLoading={loading} />

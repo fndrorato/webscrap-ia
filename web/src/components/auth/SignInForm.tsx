@@ -35,21 +35,23 @@ export default function SignInForm({ onLoginSuccess }: SignInFormProps) {
         password: password,
       });
 
-      const { access, refresh, first_name, last_name, user_id, phone, photo, permissions } = response.data;
+      const { access, refresh, user, catalog } = response.data;
+
       login(
         {
-          firstName: first_name,
-          lastName: last_name,
-          email: email,
-          userId: user_id,
-          permissions: permissions,
-          phone: phone,
-          photo: photo
+          firstName: user.first_name,
+          lastName: user.last_name,
+          email: user.email,
+          userId: user.id,
+          permissions: user.permissions,
+          phone: user.phone,
+          photo: user.photo,
         },
         access,
-        refresh
+        refresh,
+        catalog
       );
-
+      navigate('/home');
       if (onLoginSuccess) {
         onLoginSuccess();
       }
@@ -79,7 +81,7 @@ export default function SignInForm({ onLoginSuccess }: SignInFormProps) {
               <div className="space-y-6">
                 <div>
                   <Label>
-                    {t('email')} <span className="text-error-500">*</span>{" "}
+                    {t('user')} <span className="text-error-500">*</span>{" "}
                   </Label>
                   <Input
                     placeholder="usuario"
