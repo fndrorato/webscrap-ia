@@ -51,19 +51,19 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   const { t } = useTranslation();
   const { catalog } = useAuth();
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        console.error("Invalid Date string:", dateString);
-        return "Fecha inválida";
-      }
-      return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-    } catch (e) {
-      console.error("Error formatting date:", dateString, e);
-      return "Fecha inválida";
-    }
-  };
+  // const formatDate = (dateString: string) => {
+  //   try {
+  //     const date = new Date(dateString);
+  //     if (isNaN(date.getTime())) {
+  //       console.error("Invalid Date string:", dateString);
+  //       return "Fecha inválida";
+  //     }
+  //     return date.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  //   } catch (e) {
+  //     console.error("Error formatting date:", dateString, e);
+  //     return "Fecha inválida";
+  //   }
+  // };
 
   const formatPrice = (priceString: string | number) => {
     if (priceString === null || priceString === undefined || priceString === "") {

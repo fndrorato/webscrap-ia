@@ -30,7 +30,7 @@ instance.interceptors.request.use(
 );
 
 
-// export const loginEndpoint = '/api/v1/auth/token/';
-export const loginEndpoint = '/api/v1/auth/mock-token/';
+export const loginEndpoint = '/api/v1/auth/token/';
+// export const loginEndpoint = '/api/v1/auth/mock-token/';
 
 export default instance;
