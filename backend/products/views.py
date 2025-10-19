@@ -14,7 +14,7 @@ from products.serializers import (
     SiteAnalysisSerializer,
     ConfigurationSerializer
 )
-# from products.oracle_sync import sync_products_to_oracle 
+from products.oracle_sync import sync_products_to_oracle 
 from products.services.agno_manager import AgnoScrapingManager
 from products.services.nissei_scraper import NisseiSpecializedScraper
 from products.services.nissei_scraper_fixed import NisseiScraper
@@ -30,17 +30,25 @@ from sites.models import Site
 
 class UpdateProductStatusView(APIView):
     def post(self, request, *args, **kwargs):
+        # Obter dados do request
         product_id = request.data.get("id")
         new_status = request.data.get("status")
-
+        cod_proveedor = request.data.get("cod_proveedor")
+        cod_marca = request.data.get("cod_marca")
+        cod_rubro = request.data.get("cod_rubro")
+        cod_grupo = request.data.get("cod_grupo")
+        
+        # Validar campos obrigatórios
         if product_id is None or new_status is None:
             return Response(
                 {"error": "id e status são obrigatórios"},
                 status=http_status.HTTP_400_BAD_REQUEST
             )
-
+        
+        # Buscar produto
         product = get_object_or_404(Product, id=product_id)
-
+        
+        # Validar status
         try:
             new_status = int(new_status)
             if new_status not in dict(Product.STATUS_CHOICES):
@@ -53,16 +61,82 @@ class UpdateProductStatusView(APIView):
                 {"error": "status deve ser um número inteiro"},
                 status=http_status.HTTP_400_BAD_REQUEST
             )
-
+        
+        # Atualizar status
         product.status = new_status
         product.save(update_fields=["status", "updated_at"])
-
+        
+        # Preparar resposta base
+        response_data = {
+            "message": "Status atualizado com sucesso",
+            "id": product.id,
+            "status": product.get_status_display(),
+        }
+        
+        # ========== SINCRONIZAÇÃO COM ORACLE (APENAS SE STATUS = 2) ==========
+        if new_status == 2:
+            print(f"📤 Status = 2, iniciando sincronização com Oracle...")
+            
+            # Validar campos obrigatórios para Oracle
+            if not cod_proveedor:
+                return Response(
+                    {
+                        "error": "cod_proveedor é obrigatório para status 2",
+                        "message": "Para enviar ao Oracle, é necessário informar o fornecedor"
+                    },
+                    status=http_status.HTTP_400_BAD_REQUEST
+                )
+            
+            try:
+                # Serializar produto com os dados adicionais
+                serializer = ProductSerializer(product, context={'request': request})
+                product_data = serializer.data
+                
+                # Adicionar campos do Oracle
+                product_data['cod_proveedor'] = cod_proveedor
+                product_data['cod_marca'] = cod_marca
+                product_data['cod_rubro'] = cod_rubro
+                product_data['cod_grupo'] = cod_grupo
+                
+                # Obter username do usuário Oracle autenticado
+                oracle_username = request.user.username.upper() if request.user.is_authenticated else 'WEBSYNC'
+                
+                # Sincronizar com Oracle
+                print(f"🔄 Sincronizando produto {product.id} (SKU: {product.sku_code}) como usuário: {oracle_username}...")
+                sync_result = sync_products_to_oracle([product_data], cod_usuario=oracle_username)
+                
+                # Adicionar resultado da sincronização na resposta
+                response_data['oracle_sync'] = {
+                    'executed': True,
+                    'success_count': sync_result['success_count'],
+                    'error_count': sync_result['error_count'],
+                    'errors': sync_result['errors']
+                }
+                
+                if sync_result['success_count'] > 0:
+                    print(f"✅ Produto sincronizado com Oracle com sucesso!")
+                    response_data['message'] = "Status atualizado e produto sincronizado com Oracle"
+                else:
+                    print(f"❌ Erro ao sincronizar com Oracle: {sync_result['errors']}")
+                    response_data['message'] = "Status atualizado, mas houve erro na sincronização com Oracle"
+                    response_data['warning'] = "Verifique os logs de sincronização"
+                
+            except Exception as e:
+                print(f"❌ Erro na sincronização Oracle: {e}")
+                response_data['oracle_sync'] = {
+                    'executed': True,
+                    'error': str(e)
+                }
+                response_data['warning'] = f"Status atualizado, mas erro ao sincronizar: {str(e)}"
+        else:
+            print(f"ℹ️  Status = {new_status}, sincronização Oracle não executada (requer status = 2)")
+            response_data['oracle_sync'] = {
+                'executed': False,
+                'reason': 'Status diferente de 2'
+            }
+        
         return Response(
-            {
-                "message": "Status atualizado com sucesso",
-                "id": product.id,
-                "status": product.get_status_display(),
-            },
+            response_data,
             status=http_status.HTTP_200_OK
         )
 
@@ -269,9 +343,9 @@ def nissei_search_detailed(request):
                 context={'request': request}
             ).data  
                       
-            # print("Iniciando sincronização com o banco de dados Oracle...")
-            # oracle_sync_report = sync_products_to_oracle(serialized_products_data)
-            # print(f"Sincronização Oracle finalizada. Sucesso: {oracle_sync_report['success_count']}, Erros: {oracle_sync_report['error_count']}")
+            print("Iniciando sincronização com o banco de dados Oracle...")
+            oracle_sync_report = sync_products_to_oracle(serialized_products_data)
+            print(f"Sincronização Oracle finalizada. Sucesso: {oracle_sync_report['success_count']}, Erros: {oracle_sync_report['error_count']}")
                     
                     
             # 9. PREPARAR RESPOSTA         

@@ -86,13 +86,17 @@ export default function Home() {
     setSelectedImages([]);
   };
 
-  const handleUpdateStatus = async (productId: number, status: number) => {
+  const handleUpdateStatus = async (productId: number, status: number, proveedor?: string, marca?: string, rubro?: string, grupo?: string) => {
     setLoading(true);
     setError(null);
     try {
       const response = await axios.post('/api/v1/products/update-status/', {
         id: productId,
         status: status,
+        cod_proveedor: proveedor,
+        cod_marca: marca,
+        cod_rubro: rubro,
+        cod_grupo: grupo,
       });
 
       if (response.status === 200) {
@@ -112,8 +116,8 @@ export default function Home() {
     }
   };
 
-  const handleApprove = (productId: number) => {
-    handleUpdateStatus(productId, 2); // 2 for approved
+  const handleApprove = (productId: number, proveedor: string | undefined, marca: string | undefined, rubro: string | undefined, grupo: string | undefined) => {
+    handleUpdateStatus(productId, 2, proveedor, marca, rubro, grupo); // 2 for approved
   };
 
   const handleDecline = (productId: number) => {

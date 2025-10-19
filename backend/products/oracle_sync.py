@@ -1,20 +1,32 @@
-# Seu_App/oracle_sync.py
+import os
 import oracledb
 import requests  # Necessário para o BLOB/URL da imagem
 from django.utils import timezone
 from io import BytesIO  # Para lidar com os bytes da imagem
 from .oracle_connector import get_oracle_connection  # Importa a nova função de conexão
+from products.models import Product, ProductImage
 
 
 COD_EMPRESA = '1' 
 COD_MONEDA = 'GS.'
-COD_USUARIO_DB = 'RINV' 
 
-def sync_products_to_oracle(serialized_products):
+def sync_products_to_oracle(serialized_products, cod_usuario=None):
     """
     Sincroniza uma lista de produtos serializados para as tabelas Oracle
     ST_ARTICULOS_PROV e ST_IMAG_ARTICULOS usando oracledb.
+    
+    Args:
+        serialized_products: Lista de produtos serializados
+        cod_usuario: Username do usuário Oracle que está fazendo a sincronização
+                     (deve ser o username que fez login)
     """
+    # Se não informar cod_usuario, usar um padrão
+    if not cod_usuario:
+        cod_usuario = 'WEBSYNC'
+        print("⚠️  cod_usuario não informado, usando padrão: WEBSYNC")
+    else:
+        print(f"👤 Sincronizando como usuário: {cod_usuario}")
+    
     sync_results = {'success_count': 0, 'error_count': 0, 'errors': []}
     oracle_conn = None
 
@@ -41,6 +53,12 @@ def sync_products_to_oracle(serialized_products):
                 # --- Preparação dos dados ---
                 price_base = product_data.get('price')
                 original_price = product_data.get('original_price')
+                
+                # Novos campos do Oracle
+                cod_proveedor = product_data.get('cod_proveedor')
+                cod_marca = product_data.get('cod_marca')
+                cod_rubro = product_data.get('cod_rubro')
+                cod_grupo = product_data.get('cod_grupo')
 
                 try:
                     # Converte para float (lidando com vírgula e nulos)
@@ -68,6 +86,9 @@ def sync_products_to_oracle(serialized_products):
                         PALABRA_CLAVE = :brand,
                         FEC_PROCESO = :fec_proceso,
                         COD_PROVEEDOR = :cod_proveedor,
+                        COD_MARCA = :cod_marca,
+                        COD_RUBRO = :cod_rubro,
+                        COD_GRUPO = :cod_grupo,
                         IND_WEB = 'S', 
                         FEC_ULTIMA_COMP = :fec_proceso 
                     WHERE COD_EMPRESA = :cod_empresa AND COD_ARTICULO = :cod_articulo
@@ -80,7 +101,10 @@ def sync_products_to_oracle(serialized_products):
                     'url': product_data.get('url', '')[:150],
                     'brand': product_data.get('brand', '')[:200],
                     'fec_proceso': timezone.now().date(),
-                    'cod_proveedor': product_data.get('site_name', 'WEB')[:30],
+                    'cod_proveedor': cod_proveedor or '',
+                    'cod_marca': cod_marca or '',
+                    'cod_rubro': cod_rubro or '',
+                    'cod_grupo': cod_grupo or '',
                     'cod_empresa': COD_EMPRESA,
                     'cod_articulo': sku
                 }
@@ -92,10 +116,12 @@ def sync_products_to_oracle(serialized_products):
                         INSERT INTO ST_ARTICULOS_PROV (
                             COD_EMPRESA, COD_ARTICULO, DESCRIPCION, PRECIO_BASE, COSTO_PROM_EXT, 
                             DESC_CORTA, LINK_WEB, PALABRA_CLAVE, FEC_PROCESO, COD_PROVEEDOR, 
+                            COD_MARCA, COD_RUBRO, COD_GRUPO,
                             COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUTO
                         ) VALUES (
                             :cod_empresa, :cod_articulo, :description, :price_base, :original_price, 
                             :desc_corta, :url, :brand, :fec_proceso, :cod_proveedor, 
+                            :cod_marca, :cod_rubro, :cod_grupo,
                             :cod_moneda, :estado, 'S', 'N'
                         )
                     """
@@ -109,7 +135,10 @@ def sync_products_to_oracle(serialized_products):
                         'url': product_data.get('url', '')[:150],
                         'brand': product_data.get('brand', '')[:200],
                         'fec_proceso': timezone.now().date(),
-                        'cod_proveedor': product_data.get('site_name', 'WEB')[:30],
+                        'cod_proveedor': cod_proveedor or '',
+                        'cod_marca': cod_marca or '',
+                        'cod_rubro': cod_rubro or '',
+                        'cod_grupo': cod_grupo or '',
                         'cod_moneda': COD_MONEDA,
                         'estado': 'A'
                     }
@@ -118,62 +147,80 @@ def sync_products_to_oracle(serialized_products):
                 # --- QUERY 2: ST_IMAG_ARTICULOS (Imagens) ---
                 
                 # A. Deleta imagens antigas
-                sql_delete_images = """
-                    DELETE FROM ST_IMAG_ARTICULOS 
-                    WHERE COD_EMPRESA = :cod_empresa AND COD_ARTICULO = :cod_articulo
-                """
-                cursor.execute(sql_delete_images, {'cod_empresa': COD_EMPRESA, 'cod_articulo': sku})
+                # sql_delete_images = """
+                #     DELETE FROM ST_IMAG_ARTICULOS 
+                #     WHERE COD_EMPRESA = :cod_empresa AND COD_ARTICULO = :cod_articulo
+                # """
+                # cursor.execute(sql_delete_images, {'cod_empresa': COD_EMPRESA, 'cod_articulo': sku})
 
-                # B. Lista de URLs de imagens
-                image_urls = []
-                if product_data.get('main_image_url'):
-                    image_urls.append({'url': product_data['main_image_url'], 'order': 1})
-                if product_data.get('images'):
-                    for img in product_data['images']:
-                        if img.get('image_url'):
-                            # Garante que a ordem não se sobreponha à principal
-                            image_urls.append({'url': img['image_url'], 'order': img.get('order', len(image_urls) + 1) + 1})
-                
-                # C. Insere as novas imagens (Lidando com BLOB)
-                sql_insert_image = """
-                    INSERT INTO ST_IMAG_ARTICULOS (
-                        COD_EMPRESA, COD_ARTICULO, NRO_ORDEN, IMAGEN, COD_USUARIO
-                    ) VALUES (
-                        :cod_empresa, :cod_articulo, :nro_orden, EMPTY_BLOB(), :cod_usuario
-                    ) RETURNING IMAGEN INTO :lob_data
-                """
-
-                for index, img_data in enumerate(image_urls):
-                    image_url = img_data['url']
+                # B. Buscar imagens do produto no Django
+                # Tentar buscar pelo SKU ou pelo ID do produto
+                try:
+                    django_product = Product.objects.filter(sku_code=sku).first()
                     
-                    try:
-                        # 1. Baixa a imagem
-                        response = requests.get(image_url, timeout=10)
-                        response.raise_for_status()  # Levanta HTTPError para códigos 4xx/5xx
-                        image_bytes = response.content
+                    if not django_product and 'id' in product_data:
+                        django_product = Product.objects.filter(id=product_data['id']).first()
+                    
+                    if django_product and django_product.images.exists():
+                        # Pegar imagens ordenadas
+                        product_images = django_product.images.all().order_by('order', 'created_at')
                         
-                        # 2. Cria um objeto LOB (Large Object) para o BLOB
-                        lob_data = cursor.var(oracledb.DB_TYPE_BLOB)
+                        print(f"📸 Encontradas {product_images.count()} imagens para SKU {sku}")
                         
-                        # 3. Executa o INSERT, pegando o LOB handle de volta
-                        cursor.execute(sql_insert_image, {
-                            'cod_empresa': COD_EMPRESA,
-                            'cod_articulo': sku,
-                            'nro_orden': index + 1,
-                            'cod_usuario': COD_USUARIO_DB,
-                            'lob_data': lob_data  # O bind variable que receberá o BLOB handle
-                        })
+                        # C. Inserir as imagens no Oracle (lendo do disco)
+                        sql_insert_image = """
+                            INSERT INTO ST_IMAG_ARTICULOS (
+                                COD_EMPRESA, COD_ARTICULO, NRO_ORDEN, IMAGEN, COD_USUARIO
+                            ) VALUES (
+                                :cod_empresa, :cod_articulo, :nro_orden, EMPTY_BLOB(), :cod_usuario
+                            ) RETURNING IMAGEN INTO :lob_data
+                        """
                         
-                        # 4. Escreve os bytes da imagem no LOB
-                        lob = lob_data.getvalue()
-                        lob.write(image_bytes)
+                        for index, product_image in enumerate(product_images, start=1):
+                            try:
+                                # 1. Verificar se o arquivo existe no disco
+                                if not product_image.image:
+                                    print(f"⚠️  Imagem {index} sem arquivo para SKU {sku}")
+                                    continue
+                                
+                                image_path = product_image.image.path
+                                
+                                if not os.path.exists(image_path):
+                                    print(f"⚠️  Arquivo não encontrado: {image_path}")
+                                    continue
+                                
+                                # 2. Ler arquivo da imagem do disco
+                                with open(image_path, 'rb') as img_file:
+                                    image_bytes = img_file.read()
+                                
+                                # 3. Criar objeto LOB (Large Object) para o BLOB
+                                lob_data = cursor.var(oracledb.DB_TYPE_BLOB)
+                                
+                                # 4. Executar INSERT, pegando o LOB handle de volta
+                                cursor.execute(sql_insert_image, {
+                                    'cod_empresa': COD_EMPRESA,
+                                    'cod_articulo': sku,
+                                    'nro_ordem': index,
+                                    'cod_usuario': cod_usuario,
+                                    'lob_data': lob_data
+                                })
+                                
+                                # 5. Escrever os bytes da imagem no LOB
+                                lob = lob_data.getvalue()
+                                lob.write(image_bytes)
+                                
+                                print(f"✅ Imagem {index} inserida para SKU {sku} ({len(image_bytes)} bytes)")
+                                
+                            except Exception as img_e:
+                                print(f"⚠️  Erro ao inserir imagem {index} para SKU {sku}: {img_e}")
+                                # Continua para próxima imagem
+                                continue
+                    else:
+                        print(f"ℹ️  Nenhuma imagem encontrada no Django para SKU {sku}")
                         
-                    except requests.exceptions.RequestException as req_e:
-                        print(f"AVISO: Falha ao baixar imagem para SKU {sku}, URL {image_url}: {req_e}")
-                        # Não registra como erro fatal de sincronização, apenas ignora a imagem.
-                    except Exception as img_e:
-                        print(f"AVISO: Erro ao inserir BLOB para SKU {sku}: {img_e}")
-                        # Continua o loop para o próximo produto/imagem
+                except Exception as e:
+                    print(f"⚠️  Erro ao buscar imagens no Django para SKU {sku}: {e}")
+                    # Continua sem imagens
                 
                 # Commit das alterações no banco Oracle
                 oracle_conn.commit()

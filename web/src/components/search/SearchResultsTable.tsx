@@ -30,7 +30,7 @@ interface Product {
 interface SearchResultsTableProps {
   results: Product[];
   onImageClick: (images: ProductImage[]) => void;
-  onApprove?: (productId: number) => void;
+  onApprove?: (productId: number, proveedor: string | undefined, marca: string | undefined, rubro: string | undefined, grupo: string | undefined) => void;
   onDecline?: (productId: number) => void;
   onProveedorChange?: (productId: number, proveedor: string) => void;
   onMarcaChange?: (productId: number, marca: string) => void;
@@ -184,7 +184,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                     <div className="flex space-x-2">
                       {onApprove && (
                         <button 
-                          onClick={() => onApprove(product.id)} 
+                          onClick={() => onApprove(product.id, product.selectedProveedor, product.selectedMarca, product.selectedRubro, product.selectedGrupo)} 
                           className="text-green-500 hover:text-green-600 p-1 rounded-full"
                           aria-label={t('search.results.approve')}
                         >
