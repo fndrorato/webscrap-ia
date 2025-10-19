@@ -6,7 +6,7 @@ import os
 import django
 
 # Configurar Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seu_projeto.settings')  # AJUSTAR!
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings')  # AJUSTAR!
 django.setup()
 
 from django.conf import settings
@@ -47,7 +47,7 @@ print(f"  ORACLE_SERVICE_NAME: {oracle_service}")
 if not all([oracle_host, oracle_port, oracle_service]):
     print("\n❌ ERRO: Configurações Oracle não encontradas no settings.py!")
     print("   Adicione isto no settings.py:")
-    print("   ORACLE_HOST = config('ORACLE_HOST', default='192.168.10.25')")
+    print("   ORACLE_HOST = config('ORACLE_HOST', default='10.1.1.90')")
     print("   ORACLE_PORT = config('ORACLE_PORT', default='1521')")
     print("   ORACLE_SERVICE_NAME = config('ORACLE_SERVICE_NAME', default='orcl')")
     exit(1)
