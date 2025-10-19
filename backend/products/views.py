@@ -343,9 +343,9 @@ def nissei_search_detailed(request):
                 context={'request': request}
             ).data  
                       
-            print("Iniciando sincronização com o banco de dados Oracle...")
-            oracle_sync_report = sync_products_to_oracle(serialized_products_data)
-            print(f"Sincronização Oracle finalizada. Sucesso: {oracle_sync_report['success_count']}, Erros: {oracle_sync_report['error_count']}")
+            # print("Iniciando sincronização com o banco de dados Oracle...")
+            # oracle_sync_report = sync_products_to_oracle(serialized_products_data)
+            # print(f"Sincronização Oracle finalizada. Sucesso: {oracle_sync_report['success_count']}, Erros: {oracle_sync_report['error_count']}")
                     
                     
             # 9. PREPARAR RESPOSTA         
