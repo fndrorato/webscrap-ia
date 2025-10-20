@@ -26,6 +26,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from sites.models import Site
+from users.models import CustomUser
+from users.utils import decode_simple
 
 
 class UpdateProductStatusView(APIView):
@@ -100,10 +102,26 @@ class UpdateProductStatusView(APIView):
                 
                 # Obter username do usuário Oracle autenticado
                 oracle_username = request.user.username.upper() if request.user.is_authenticated else 'WEBSYNC'
+                if request.user.is_authenticated:
+                    try:
+                        custom = request.user.customuser  # usa related_name='customuser'
+                        oracle_password = custom.oracle_password
+                    except CustomUser.DoesNotExist:
+                        oracle_password = None  # ou valor padrão se não houver registro
+                else:
+                    oracle_password = None  # usuário não autenticado 
+                
+                if oracle_password:
+                    # Decodificar senha
+                    try:
+                        oracle_password = decode_simple(oracle_password)
+                    except Exception as e:
+                        print(f"❌ Erro ao decodificar senha Oracle do usuário {oracle_username}: {e}")
+                        oracle_password = None               
                 
                 # Sincronizar com Oracle
                 print(f"🔄 Sincronizando produto {product.id} (SKU: {product.sku_code}) como usuário: {oracle_username}...")
-                sync_result = sync_products_to_oracle([product_data], cod_usuario=oracle_username)
+                sync_result = sync_products_to_oracle([product_data], cod_usuario=oracle_username, password=oracle_password)
                 
                 # Adicionar resultado da sincronização na resposta
                 response_data['oracle_sync'] = {

@@ -7,3 +7,4 @@ class CustomUser(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, related_name='customuser')
     photo = models.ImageField(upload_to=user_photo_path, null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    oracle_password = models.CharField(max_length=255, blank=True)

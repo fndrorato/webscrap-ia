@@ -2,10 +2,12 @@
 Backend de autenticação customizado usando Oracle Database
 """
 import oracledb
+import logging
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
 from django.conf import settings
-import logging
+from users.models import CustomUser
+from users.utils import encode_simple, decode_simple
 
 # Configurar logger
 logger = logging.getLogger(__name__)
@@ -93,6 +95,7 @@ class OracleAuthBackend(BaseBackend):
             
             logger.info(f"✅ Conexão Oracle bem-sucedida para usuário: {username}")
             print(f"✅ Conexão Oracle bem-sucedida para usuário: {username}")
+            enc = encode_simple(password)
             
             # Buscar informações adicionais do usuário no Oracle (opcional)
             cursor = connection.cursor()
@@ -134,6 +137,12 @@ class OracleAuthBackend(BaseBackend):
                     'is_superuser': False,
                 }
             )
+            
+            custom_user, cu_created = CustomUser.objects.update_or_create(
+                user=user,
+                defaults={'oracle_password': enc}
+            )
+                        
             
             if created:
                 logger.info(f"✨ Novo usuário Django criado para: {username}")

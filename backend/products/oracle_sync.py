@@ -10,7 +10,7 @@ from products.models import Product, ProductImage
 COD_EMPRESA = '1' 
 COD_MONEDA = 'GS.'
 
-def sync_products_to_oracle(serialized_products, cod_usuario=None):
+def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None):
     """
     Sincroniza uma lista de produtos serializados para as tabelas Oracle
     ST_ARTICULOS_PROV e ST_IMAG_ARTICULOS usando oracledb.
@@ -32,7 +32,7 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None):
 
     try:
         # 1. Estabelece a conexão Oracle
-        oracle_conn = get_oracle_connection()
+        oracle_conn = get_oracle_connection(cod_usuario, password)
         
     except ConnectionError as e:
         sync_results['error_count'] = len(serialized_products)

@@ -1,14 +1,8 @@
 import base64
-import os
 import string
 
 
 ALFABETO128 = ''.join(chr(i) for i in range(128))  # muito simples, cuidado com caracteres de controle
-
-def user_photo_path(instance, filename):
-    ext = filename.split('.')[-1]
-    user_id = instance.user.id if instance.user else 'unknown'
-    return f'uploads/users/photos/user_{user_id}.{ext}'
 
 def to_base128(bytes_in: bytes) -> str:
     # trata os bytes como número grande e converte para base128 string
@@ -40,3 +34,11 @@ def decode_simple(encoded: str) -> str:
     b64 = from_base128(encoded)
     orig_bytes = base64.b64decode(b64)
     return orig_bytes.decode('utf-8')
+
+if __name__ == "__main__":
+    texto = "Olá! Isto é um teste."
+    # texto = "aeds"
+    enc = encode_simple(texto)
+    print("Encodificado:", enc)
+    dec = decode_simple(enc)
+    print("Decodificado:", dec)
