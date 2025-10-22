@@ -192,6 +192,8 @@ i18n
           "search.results.select_marca": "Seleccionar Marca",
           "search.results.select_rubro": "Seleccionar Rubro",
           "search.results.select_grupo": "Seleccionar Grupo",
+          "search.results.declined": "Rechazado",
+          "search.results.approved": "Aprobado",
           "Approved Items": "Artículos Aprobados",
           "Cerrar Sesión": "Cerrar sesión",
           "welcome": "¡Bienvenido a nuestra aplicación!",
