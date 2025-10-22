@@ -6,6 +6,12 @@ import os
 # Inicializa o modo "thick" do oracledb (necessário para Oracle < 12.1)
 # Isso deve ser chamado UMA VEZ antes de qualquer conexão
 def _init_thick_mode():
+    
+    # Só inicializa se a variável de ambiente permitir
+    if os.environ.get('SKIP_ORACLE_INIT', 'false').lower() == 'true':
+        print("⚠️ Pulando inicialização do Oracle Client (SKIP_ORACLE_INIT=true)")
+        return
+        
     """Inicializa o thick mode do oracledb uma única vez."""
     if not hasattr(_init_thick_mode, '_initialized'):
         try:
