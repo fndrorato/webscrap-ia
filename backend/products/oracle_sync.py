@@ -1,6 +1,7 @@
 import os
 import oracledb
 import requests  # Necessário para o BLOB/URL da imagem
+import traceback
 from django.utils import timezone
 from io import BytesIO  # Para lidar com os bytes da imagem
 from .oracle_connector import get_oracle_connection  # Importa a nova função de conexão
@@ -142,6 +143,34 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         'cod_moneda': COD_MONEDA,
                         'estado': 'A'
                     }
+                    
+                    # 💡 INÍCIO DO CÓDIGO DE DEBUG
+                    print(f"--- DEBUG INSERT SKU: {sku} ---")
+                    
+                    # Formata a query para visualização (SUBSTITUIÇÃO BÁSICA)
+                    debug_sql = sql_insert
+                    for key, value in params_insert.items():
+                        # Certifica-se de que strings sejam envoltas em aspas
+                        # Cuidado: isto é para DEBUG e não deve ser usado para execução real
+                        if isinstance(value, str):
+                            # Simplificação: usa str() para Data/Date
+                            value_str = f"'{str(value)}'"
+                        elif value is None:
+                            value_str = 'NULL'
+                        else:
+                            value_str = str(value)
+
+                        # Substitui o placeholder no SQL
+                        # Usa uma regex básica para garantir que substitua apenas :key
+                        import re
+                        debug_sql = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql)
+
+
+                    # Imprime a query formatada
+                    print(debug_sql)
+                    print(f"--- FIM DEBUG INSERT SKU: {sku} ---")
+                    # 💡 FIM DO CÓDIGO DE DEBUG
+                                        
                     cursor.execute(sql_insert, params_insert)
 
                 # --- QUERY 2: ST_IMAG_ARTICULOS (Imagens) ---
@@ -229,14 +258,37 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
         except oracledb.Error as db_e:
             # Erro específico do Oracle
             oracle_conn.rollback()
-            error_obj, = db_e.args
+            
+            error_code = 'N/A'
+            error_message = str(db_e)
+            
+            # ➡️ TRATAMENTO DE ERRO ROBUSTO: Tenta extrair código e mensagem de forma segura
+            if db_e.args:
+                error_obj = db_e.args[0]
+                # Verifica se o objeto de erro tem os atributos esperados
+                if hasattr(error_obj, 'code'):
+                    error_code = error_obj.code
+                if hasattr(error_obj, 'message'):
+                    error_message = error_obj.message
+            
             sync_results['error_count'] += 1
-            sync_results['errors'].append(f"Erro DB Oracle SKU {sku}: {error_obj.code} - {error_obj.message}")
+            
+            # Imprime no log para ver imediatamente o erro do DB
+            print(f"❌ Erro DB Oracle REAL para SKU {sku}: {error_code} - {error_message}")
+            
+            # Registra no resultado
+            sync_results['errors'].append(f"Erro DB Oracle SKU {sku}: {error_code} - {error_message}")
             
         except Exception as e:
+            import traceback # 👈 Importe isso no topo do arquivo
             # Outros erros (ex: erro de tipo de dados)
             oracle_conn.rollback()
             sync_results['error_count'] += 1
+            
+            # 💡 Imprimir o traceback completo para diagnóstico
+            print(f"\n❌ ERRO GERAL CRÍTICO NO PRODUTO {sku} ❌")
+            traceback.print_exc()
+            
             sync_results['errors'].append(f"Erro Geral SKU {sku}: {e}")
 
     # 3. Fecha a conexão após processar todos os produtos
