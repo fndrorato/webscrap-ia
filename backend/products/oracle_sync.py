@@ -119,7 +119,7 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                     # 2. Formata o valor baseado no tipo
                     if isinstance(value, str):
                         # Escapa aspas simples (se houver) e envolve em aspas simples
-                        value_str = f"'{value.replace("'", "''")}'"
+                        value_str = f"'{value.replace('\'', '\'\'')}'"
                     elif isinstance(value, (int, float)):
                         value_str = str(value)
                     elif value is None:
