@@ -109,6 +109,34 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                     'cod_empresa': COD_EMPRESA,
                     'cod_articulo': sku
                 }
+
+                # 💡 CÓDIGO DE DEBUG PARA GERAR A QUERY COMPLETA 💡
+                debug_sql_formatted = sql_update
+                
+                # 1. Substitui os valores na query
+                for key, value in params_update.items():
+                    
+                    # 2. Formata o valor baseado no tipo
+                    if isinstance(value, str):
+                        # Escapa aspas simples (se houver) e envolve em aspas simples
+                        value_str = f"'{value.replace("'", "''")}'"
+                    elif isinstance(value, (int, float)):
+                        value_str = str(value)
+                    elif value is None:
+                        value_str = 'NULL'
+                    else:
+                        # Trata datas/objetos: converte para string e envolve em aspas
+                        value_str = f"'{str(value)}'"
+
+                    # 3. Substitui o placeholder (usa regex para evitar substituições parciais, ex: :cod por :cod_articulo)
+                    # A opção 're.IGNORECASE' pode ser útil, mas o bind do Oracle é case-sensitive
+                    debug_sql_formatted = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql_formatted)
+
+                # 4. Imprime a query formatada em uma linha (removendo novas linhas e espaços extras)
+                print(f"\n--- DEBUG UPDATE FORMATADO PARA {sku} ---")
+                print(re.sub(r'\s+', ' ', debug_sql_formatted).strip())
+                print("--- FIM DEBUG ---")              
+                
                 cursor.execute(sql_update, params_update)
                 
                 # 2. Se nenhuma linha foi afetada, faz o INSERT:
