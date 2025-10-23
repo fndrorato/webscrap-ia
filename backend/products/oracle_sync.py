@@ -1,4 +1,5 @@
 import os
+import re  # 👈 MOVIDO PARA O TOPO DO ARQUIVO
 import oracledb
 import requests  # Necessário para o BLOB/URL da imagem
 import traceback
@@ -72,6 +73,14 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                 except (ValueError, TypeError):
                     original_price_num = 0.0
 
+                # Verificando as tabelas disponíveis (DEBUG)
+                cursor = oracle_conn.cursor()
+                cursor.execute("""
+                    SELECT table_name FROM user_tables 
+                    WHERE table_name LIKE '%ARTICULOS%'
+                """)
+                print("📋 Tabelas disponíveis:", cursor.fetchall())                
+                
                 
                 # --- QUERY 1: ST_ARTICULOS_PROV (Produto Principal) ---
                 
@@ -111,34 +120,32 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                 }
 
                 # 💡 CÓDIGO DE DEBUG PARA GERAR A QUERY COMPLETA 💡
-                debug_sql_formatted = sql_update
-                # 1. Defina os caracteres de aspas para uso seguro na f-string
-                single_quote = "'" 
-                double_single_quote = "''" 
-                
-                # 2. Substitui os valores na query
-                for key, value in params_update.items():
+                try:
+                    debug_sql_formatted = sql_update
                     
-                    # 3. Formata o valor baseado no tipo
-                    if isinstance(value, str):
-                        # Escapa aspas simples e envolve em aspas simples.
-                        # Usa as variáveis definidas para evitar backslashes na expressão.
-                        value_str = f"'{value.replace(single_quote, double_single_quote)}'"
-                    elif isinstance(value, (int, float)):
-                        value_str = str(value)
-                    elif value is None:
-                        value_str = 'NULL'
-                    else:
-                        # Trata datas/objetos: converte para string e envolve em aspas
-                        value_str = f"'{str(value)}'"
+                    # Substitui os valores na query
+                    for key, value in params_update.items():
+                        # Formata o valor baseado no tipo
+                        if isinstance(value, str):
+                            # Escapa aspas simples
+                            value_str = f"'{value.replace(chr(39), chr(39)+chr(39))}'"
+                        elif isinstance(value, (int, float)):
+                            value_str = str(value)
+                        elif value is None:
+                            value_str = 'NULL'
+                        else:
+                            # Trata datas/objetos: converte para string e envolve em aspas
+                            value_str = f"'{str(value)}'"
 
-                    # 4. Substitui o placeholder no SQL
-                    debug_sql_formatted = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql_formatted)
+                        # Substitui o placeholder no SQL
+                        debug_sql_formatted = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql_formatted)
 
-                # 4. Imprime a query formatada em uma linha (removendo novas linhas e espaços extras)
-                print(f"\n--- DEBUG UPDATE FORMATADO PARA {sku} ---")
-                print(re.sub(r'\s+', ' ', debug_sql_formatted).strip())
-                print("--- FIM DEBUG ---")              
+                    # Imprime a query formatada em uma linha (removendo novas linhas e espaços extras)
+                    print(f"\n--- DEBUG UPDATE FORMATADO PARA {sku} ---")
+                    print(re.sub(r'\s+', ' ', debug_sql_formatted).strip())
+                    print("--- FIM DEBUG ---")
+                except Exception as debug_error:
+                    print(f"⚠️ Erro ao gerar debug SQL: {debug_error}")
                 
                 cursor.execute(sql_update, params_update)
                 
@@ -175,44 +182,33 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         'estado': 'A'
                     }
                     
-                    # 💡 INÍCIO DO CÓDIGO DE DEBUG
-                    print(f"--- DEBUG INSERT SKU: {sku} ---")
-                    
-                    # Formata a query para visualização (SUBSTITUIÇÃO BÁSICA)
-                    debug_sql = sql_insert
-                    for key, value in params_insert.items():
-                        # Certifica-se de que strings sejam envoltas em aspas
-                        # Cuidado: isto é para DEBUG e não deve ser usado para execução real
-                        if isinstance(value, str):
-                            # Simplificação: usa str() para Data/Date
-                            value_str = f"'{str(value)}'"
-                        elif value is None:
-                            value_str = 'NULL'
-                        else:
-                            value_str = str(value)
+                    # 💡 CÓDIGO DE DEBUG PARA INSERT
+                    try:
+                        print(f"--- DEBUG INSERT SKU: {sku} ---")
+                        
+                        # Formata a query para visualização
+                        debug_sql = sql_insert
+                        for key, value in params_insert.items():
+                            if isinstance(value, str):
+                                value_str = f"'{str(value)}'"
+                            elif value is None:
+                                value_str = 'NULL'
+                            else:
+                                value_str = str(value)
 
-                        # Substitui o placeholder no SQL
-                        # Usa uma regex básica para garantir que substitua apenas :key
-                        import re
-                        debug_sql = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql)
+                            # Substitui o placeholder no SQL
+                            debug_sql = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql)
 
-
-                    # Imprime a query formatada
-                    print(debug_sql)
-                    print(f"--- FIM DEBUG INSERT SKU: {sku} ---")
-                    # 💡 FIM DO CÓDIGO DE DEBUG
+                        # Imprime a query formatada
+                        print(re.sub(r'\s+', ' ', debug_sql).strip())
+                        print(f"--- FIM DEBUG INSERT SKU: {sku} ---")
+                    except Exception as debug_error:
+                        print(f"⚠️ Erro ao gerar debug INSERT: {debug_error}")
                                         
                     cursor.execute(sql_insert, params_insert)
 
                 # --- QUERY 2: ST_IMAG_ARTICULOS (Imagens) ---
                 
-                # A. Deleta imagens antigas
-                # sql_delete_images = """
-                #     DELETE FROM ST_IMAG_ARTICULOS 
-                #     WHERE COD_EMPRESA = :cod_empresa AND COD_ARTICULO = :cod_articulo
-                # """
-                # cursor.execute(sql_delete_images, {'cod_empresa': COD_EMPRESA, 'cod_articulo': sku})
-
                 # B. Buscar imagens do produto no Django
                 # Tentar buscar pelo SKU ou pelo ID do produto
                 try:
@@ -311,7 +307,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
             sync_results['errors'].append(f"Erro DB Oracle SKU {sku}: {error_code} - {error_message}")
             
         except Exception as e:
-            import traceback # 👈 Importe isso no topo do arquivo
             # Outros erros (ex: erro de tipo de dados)
             oracle_conn.rollback()
             sync_results['error_count'] += 1
