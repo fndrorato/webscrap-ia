@@ -112,14 +112,18 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
 
                 # 💡 CÓDIGO DE DEBUG PARA GERAR A QUERY COMPLETA 💡
                 debug_sql_formatted = sql_update
+                # 1. Defina os caracteres de aspas para uso seguro na f-string
+                single_quote = "'" 
+                double_single_quote = "''" 
                 
-                # 1. Substitui os valores na query
+                # 2. Substitui os valores na query
                 for key, value in params_update.items():
                     
-                    # 2. Formata o valor baseado no tipo
+                    # 3. Formata o valor baseado no tipo
                     if isinstance(value, str):
-                        # Escapa aspas simples (se houver) e envolve em aspas simples
-                        value_str = f"'{value.replace('\'', '\'\'')}'"
+                        # Escapa aspas simples e envolve em aspas simples.
+                        # Usa as variáveis definidas para evitar backslashes na expressão.
+                        value_str = f"'{value.replace(single_quote, double_single_quote)}'"
                     elif isinstance(value, (int, float)):
                         value_str = str(value)
                     elif value is None:
@@ -128,8 +132,7 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         # Trata datas/objetos: converte para string e envolve em aspas
                         value_str = f"'{str(value)}'"
 
-                    # 3. Substitui o placeholder (usa regex para evitar substituições parciais, ex: :cod por :cod_articulo)
-                    # A opção 're.IGNORECASE' pode ser útil, mas o bind do Oracle é case-sensitive
+                    # 4. Substitui o placeholder no SQL
                     debug_sql_formatted = re.sub(r':\b' + re.escape(key) + r'\b', value_str, debug_sql_formatted)
 
                 # 4. Imprime a query formatada em uma linha (removendo novas linhas e espaços extras)
