@@ -73,14 +73,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                 except (ValueError, TypeError):
                     original_price_num = 0.0
 
-                # Verificando as tabelas disponíveis (DEBUG)
-                cursor = oracle_conn.cursor()
-                cursor.execute("""
-                    SELECT table_name FROM user_tables 
-                    WHERE table_name LIKE '%ARTICULOS%'
-                """)
-                print("📋 Tabelas disponíveis:", cursor.fetchall())                
-                
                 
                 # --- QUERY 1: ST_ARTICULOS_PROV (Produto Principal) ---
                 
@@ -156,7 +148,7 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                             COD_EMPRESA, COD_ARTICULO, DESCRIPCION, PRECIO_BASE, COSTO_PROM_EXT, 
                             DESC_CORTA, LINK_WEB, PALABRA_CLAVE, FEC_PROCESO, COD_PROVEEDOR, 
                             COD_MARCA, COD_RUBRO, COD_GRUPO,
-                            COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUTO
+                            COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUCTO
                         ) VALUES (
                             :cod_empresa, :cod_articulo, :description, :price_base, :original_price, 
                             :desc_corta, :url, :brand, :fec_proceso, :cod_proveedor, 
