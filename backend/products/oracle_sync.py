@@ -216,14 +216,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         print(f"📸 Encontradas {product_images.count()} imagens para SKU {sku}")
                         
                         # C. Inserir as imagens no Oracle (lendo do disco)
-                        sql_insert_image = """
-                            INSERT INTO ST_IMAG_ARTICULOS (
-                                COD_EMPRESA, COD_ARTICULO, NRO_ORDEN, IMAGEN, COD_USUARIO
-                            ) VALUES (
-                                :cod_empresa, :cod_articulo, :nro_orden, EMPTY_BLOB(), :cod_usuario
-                            ) RETURNING IMAGEN INTO :lob_data
-                        """
-                        
                         for index, product_image in enumerate(product_images, start=1):
                             try:
                                 # 1. Verificar se o arquivo existe no disco
@@ -241,21 +233,30 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                                 with open(image_path, 'rb') as img_file:
                                     image_bytes = img_file.read()
                                 
-                                # 3. Criar objeto LOB (Large Object) para o BLOB
-                                lob_data = cursor.var(oracledb.DB_TYPE_BLOB)
+                                # 3. Criar variável para o LOB
+                                blob_var = cursor.var(oracledb.BLOB)
                                 
-                                # 4. Executar INSERT, pegando o LOB handle de volta
-                                cursor.execute(sql_insert_image, {
-                                    'cod_empresa': COD_EMPRESA,
-                                    'cod_articulo': sku,
-                                    'nro_ordem': index,
-                                    'cod_usuario': cod_usuario,
-                                    'lob_data': lob_data
-                                })
+                                # 4. SQL com RETURNING
+                                sql_insert_image = """
+                                    INSERT INTO ST_IMAG_ARTICULOS (
+                                        COD_EMPRESA, COD_ARTICULO, NRO_ORDEN, IMAGEN, COD_USUARIO
+                                    ) VALUES (
+                                        :1, :2, :3, EMPTY_BLOB(), :4
+                                    ) RETURNING IMAGEN INTO :5
+                                """
                                 
-                                # 5. Escrever os bytes da imagem no LOB
-                                lob = lob_data.getvalue()
-                                lob.write(image_bytes)
+                                # 5. Executar INSERT
+                                cursor.execute(sql_insert_image, [
+                                    COD_EMPRESA,
+                                    sku,
+                                    index,
+                                    cod_usuario,
+                                    blob_var
+                                ])
+                                
+                                # 6. Escrever os bytes da imagem no BLOB
+                                blob = blob_var.getvalue()[0]
+                                blob.write(image_bytes)
                                 
                                 print(f"✅ Imagem {index} inserida para SKU {sku} ({len(image_bytes)} bytes)")
                                 
