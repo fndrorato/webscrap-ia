@@ -32,6 +32,36 @@ else
     echo -e "${YELLOW}WARNING: ChromeDriver não encontrado (será baixado pelo webdriver-manager)${NC}"
 fi
 
+# ========== VERIFICAÇÃO PLAYWRIGHT ==========
+echo ""
+echo "Verificando Playwright..."
+if python -c "import playwright" 2>/dev/null; then
+    echo -e "${GREEN}✓ Playwright Python: INSTALADO${NC}"
+    
+    # Verificar browsers do Playwright
+    if [ -d "/ms-playwright" ]; then
+        echo -e "${GREEN}✓ Playwright Browsers Path: /ms-playwright${NC}"
+        
+        # Verificar se chromium está instalado
+        if [ -d "/ms-playwright/chromium"* ]; then
+            CHROMIUM_PATH=$(ls -d /ms-playwright/chromium* 2>/dev/null | head -1)
+            echo -e "${GREEN}✓ Playwright Chromium: INSTALADO${NC}"
+            echo "  Path: $CHROMIUM_PATH"
+        else
+            echo -e "${RED}✗ Playwright Chromium: NÃO ENCONTRADO${NC}"
+            echo -e "${YELLOW}  Tentando instalar browsers...${NC}"
+            playwright install chromium || echo -e "${RED}  Falha na instalação${NC}"
+        fi
+    else
+        echo -e "${RED}✗ Playwright Browsers: DIRETÓRIO NÃO EXISTE${NC}"
+    fi
+else
+    echo -e "${RED}✗ Playwright Python: NÃO INSTALADO${NC}"
+fi
+
+# Verificar variável de ambiente
+echo "PLAYWRIGHT_BROWSERS_PATH: $PLAYWRIGHT_BROWSERS_PATH"
+
 # ========== VERIFICAÇÃO ORACLE CLIENT ==========
 echo ""
 echo "Verificando Oracle Instant Client..."
@@ -89,6 +119,8 @@ fix_permissions() {
 # Verificar e corrigir diretórios críticos
 fix_permissions "/app/media"
 fix_permissions "/app/media/products"
+fix_permissions "/app/media/products/gallery"
+fix_permissions "/app/media/products/images"
 fix_permissions "/app/media/images"
 fix_permissions "/app/media/uploads"
 fix_permissions "/app/static"
@@ -96,6 +128,11 @@ fix_permissions "/app/staticfiles"
 fix_permissions "/app/logs"
 fix_permissions "/tmp/.cache/selenium"
 fix_permissions "/app/.cache/selenium"
+
+# Verificar Playwright browsers path
+if [ -d "/ms-playwright" ]; then
+    fix_permissions "/ms-playwright"
+fi
 
 # ========== ESTRUTURA DE DIRETÓRIOS ==========
 echo ""

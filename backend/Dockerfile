@@ -2,6 +2,7 @@
 FROM python:3.11-slim
 
 # Variáveis de ambiente
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
@@ -80,6 +81,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Instalar webdriver-manager
 RUN pip install webdriver-manager
+
+# ========== INSTALAR PLAYWRIGHT BROWSERS ==========
+RUN pip install playwright && \
+    playwright install --with-deps chromium && \
+    chmod -R 777 /ms-playwright
+# ===================================================
 
 # Copiar código do projeto
 COPY . /app/
