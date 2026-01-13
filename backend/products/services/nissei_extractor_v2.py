@@ -537,53 +537,105 @@ Responda APENAS com JSON válido:
     
     def _extract_images_playwright(self, url: str) -> List[str]:
         """
-        Extrai imagens usando Playwright (MÉTODO RÁPIDO)
-        ~5s por produto vs ~40s com Selenium
-        
-        Como funciona:
-        1. Carrega página
-        2. Espera carrossel Fotorama
-        3. Extrai URLs via JavaScript (SEM cliques)
-        4. Converte URLs de cache para originais
+        Extrai imagens usando Playwright com múltiplos fallbacks
         """
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
+                # Configurações anti-detecção
+                browser = p.chromium.launch(
+                    headless=True,
+                    args=[
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-dev-shm-usage',
+                        '--no-sandbox'
+                    ]
+                )
+                
+                context = browser.new_context(
+                    viewport={'width': 1920, 'height': 1080},
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                )
+                
+                page = context.new_page()
                 
                 # Carregar página
-                page.goto(url, wait_until='domcontentloaded', timeout=40000)
+                self.log("      🌐 Carregando página...")
+                page.goto(url, wait_until='networkidle', timeout=30000)
                 
-                # Aguardar carrossel Fotorama
-                try:
-                    page.wait_for_selector('[data-gallery-role="gallery"]', timeout=15000)
-                    page.wait_for_timeout(4000)  # Aguardar JS inicializar
-                except:
-                    self.log("      ⚠️ Timeout carrossel")
-                    browser.close()
-                    return []
+                # ===================================================
+                # ESTRATÉGIA 1: Tentar seletores do carrossel Fotorama
+                # ===================================================
+                selectors_to_try = [
+                    '[data-gallery-role="gallery"]',
+                    '.fotorama',
+                    '.product-image-container',
+                    '.gallery-placeholder',
+                    '[data-role="fotorama"]'
+                ]
                 
-                # Extrair URLs via JavaScript (SEM CLIQUES - RÁPIDO!)
+                carousel_found = False
+                for selector in selectors_to_try:
+                    try:
+                        self.log(f"      🔍 Tentando seletor: {selector}")
+                        page.wait_for_selector(selector, timeout=8000)
+                        carousel_found = True
+                        self.log(f"      ✅ Carrossel encontrado: {selector}")
+                        break
+                    except:
+                        continue
+                
+                if carousel_found:
+                    # Aguardar inicialização do JS
+                    page.wait_for_timeout(3000)
+                
+                # ===================================================
+                # ESTRATÉGIA 2: Extrair URLs (múltiplos métodos)
+                # ===================================================
+                self.log("      📸 Extraindo URLs das imagens...")
+                
                 thumb_urls = page.evaluate("""
                     () => {
                         const results = [];
+                        const seen = new Set();
                         
-                        // Método 1: Miniaturas com data-gallery-role
-                        const frames = document.querySelectorAll('[data-gallery-role="nav-frame"] img');
-                        if (frames.length > 0) {
-                            frames.forEach(img => {
-                                if (img.src && !img.src.includes('data:image')) {
+                        // Método 1: Miniaturas Fotorama com data-gallery-role
+                        const navFrames = document.querySelectorAll('[data-gallery-role="nav-frame"] img, [data-gallery-role="gallery-nav"] img');
+                        navFrames.forEach(img => {
+                            if (img.src && !img.src.includes('data:image') && !seen.has(img.src)) {
+                                results.push(img.src);
+                                seen.add(img.src);
+                            }
+                        });
+                        
+                        // Método 2: Classe fotorama__nav__frame
+                        if (results.length === 0) {
+                            const fotoFrames = document.querySelectorAll('.fotorama__nav__frame img, .fotorama__nav img');
+                            fotoFrames.forEach(img => {
+                                if (img.src && !img.src.includes('data:image') && !seen.has(img.src)) {
                                     results.push(img.src);
+                                    seen.add(img.src);
                                 }
                             });
                         }
                         
-                        // Método 2: Classe fotorama (fallback)
+                        // Método 3: Galeria principal (imagens grandes)
                         if (results.length === 0) {
-                            const frames2 = document.querySelectorAll('.fotorama__nav__frame img');
-                            frames2.forEach(img => {
-                                if (img.src && !img.src.includes('data:image')) {
+                            const mainImages = document.querySelectorAll('.fotorama__stage img, [data-gallery-role="gallery"] img');
+                            mainImages.forEach(img => {
+                                if (img.src && !img.src.includes('data:image') && !seen.has(img.src)) {
                                     results.push(img.src);
+                                    seen.add(img.src);
+                                }
+                            });
+                        }
+                        
+                        // Método 4: Qualquer img dentro de .product-image-container
+                        if (results.length === 0) {
+                            const containerImages = document.querySelectorAll('.product-image-container img, .product.media img');
+                            containerImages.forEach(img => {
+                                if (img.src && !img.src.includes('data:image') && !seen.has(img.src)) {
+                                    results.push(img.src);
+                                    seen.add(img.src);
                                 }
                             });
                         }
@@ -595,9 +647,15 @@ Responda APENAS com JSON válido:
                 browser.close()
                 
                 if not thumb_urls:
-                    return []
+                    self.log("      ⚠️  Nenhuma URL encontrada via Playwright")
+                    # Fallback para BeautifulSoup
+                    return self._extract_images_beautifulsoup_fallback(url)
                 
-                # Converter URLs de cache para originais
+                self.log(f"      ✅ {len(thumb_urls)} URLs encontradas")
+                
+                # ===================================================
+                # ESTRATÉGIA 3: Converter URLs para originais
+                # ===================================================
                 original_urls = []
                 seen = set()
                 
@@ -615,7 +673,8 @@ Responda APENAS com JSON válido:
         
         except Exception as e:
             self.log(f"      ❌ Erro Playwright: {e}")
-            return []
+            # Fallback para BeautifulSoup
+            return self._extract_images_beautifulsoup_fallback(url)
     
     def _convert_cache_url_to_original(self, cache_url: str) -> str:
         """
@@ -782,6 +841,73 @@ Responda APENAS com JSON válido:
         
         except Exception as e:
             return None
+
+    def _extract_images_beautifulsoup_fallback(self, url: str) -> List[str]:
+        """
+        Fallback: extrai imagens usando BeautifulSoup (quando Playwright falha)
+        """
+        try:
+            self.log("      🔄 Usando fallback BeautifulSoup...")
+            
+            response = self.session.get(url, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            image_urls = []
+            seen = set()
+            
+            # Método 1: Buscar em scripts JSON (Fotorama muitas vezes injeta dados em JS)
+            scripts = soup.find_all('script', type='text/x-magento-init')
+            for script in scripts:
+                try:
+                    script_text = script.string
+                    if script_text and 'mage/gallery/gallery' in script_text:
+                        # Extrair URLs do JSON
+                        import json
+                        data = json.loads(script_text)
+                        for key, value in data.items():
+                            if isinstance(value, dict) and 'mage/gallery/gallery' in value:
+                                gallery_data = value['mage/gallery/gallery'].get('data', [])
+                                for item in gallery_data:
+                                    if isinstance(item, dict):
+                                        img_url = item.get('full') or item.get('img')
+                                        if img_url and img_url not in seen:
+                                            image_urls.append(img_url)
+                                            seen.add(img_url)
+                except:
+                    continue
+            
+            # Método 2: Buscar imagens no HTML
+            if not image_urls:
+                selectors = [
+                    '.fotorama__stage img',
+                    '[data-gallery-role="gallery"] img',
+                    '.product-image-photo',
+                    '.gallery-placeholder img',
+                    '.product.media img'
+                ]
+                
+                for selector in selectors:
+                    imgs = soup.select(selector)
+                    for img in imgs:
+                        src = img.get('src') or img.get('data-src')
+                        if src and 'data:image' not in src and src not in seen:
+                            if src.startswith('/'):
+                                src = f"{self.base_url}{src}"
+                            # Converter cache para original
+                            src = self._convert_cache_url_to_original(src)
+                            image_urls.append(src)
+                            seen.add(src)
+                    
+                    if image_urls:
+                        break
+            
+            self.log(f"      ✅ Fallback encontrou {len(image_urls)} imagens")
+            return image_urls[:self.max_images_per_product]
+        
+        except Exception as e:
+            self.log(f"      ❌ Erro no fallback: {e}")
+            return []            
     
     # =====================================================================
     # CHAMADAS À IA (OPCIONAL)

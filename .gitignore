@@ -7,7 +7,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 
-
+/backend/media/*
 /backend/venv/
 /backend/.env
 /backend/static/
