@@ -33,10 +33,11 @@ class ProductImageSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
+            # request = self.context.get('request')
+            # if request:
+            #     return request.build_absolute_uri(obj.image.url)
+            # ✅ RETORNA URL RELATIVA (sem build_absolute_uri)
+            return obj.image.url  # Retorna /media/products/gallery/...
         return None
     
     class Meta:
@@ -52,10 +53,12 @@ class ProductSerializer(serializers.ModelSerializer):
     
     def get_main_image_url(self, obj):
         if obj.main_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.main_image.url)
-            return obj.main_image.url
+            # request = self.context.get('request')
+            # if request:
+            #     return request.build_absolute_uri(obj.main_image.url)
+            # return obj.main_image.url
+            # ✅ RETORNA URL RELATIVA (sem build_absolute_uri)
+            return obj.main_image.url  # Retorna /media/products/main_...            
         return None
     
     class Meta:
