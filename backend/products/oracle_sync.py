@@ -238,7 +238,7 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                                 
                                 # 4. SQL com RETURNING
                                 sql_insert_image = """
-                                    INSERT INTO ST_IMAG_ARTICULOS (
+                                    INSERT INTO ST_IMAG_ARTICULOS_PROV (
                                         COD_EMPRESA, COD_ARTICULO, NRO_ORDEN, IMAGEN, COD_USUARIO
                                     ) VALUES (
                                         :1, :2, :3, EMPTY_BLOB(), :4
