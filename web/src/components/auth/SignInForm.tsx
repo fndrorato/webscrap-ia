@@ -35,7 +35,7 @@ export default function SignInForm({ onLoginSuccess }: SignInFormProps) {
         password: password,
       });
 
-      const { access, refresh, user, catalog } = response.data;
+      const { access, refresh, user } = response.data;
 
       login(
         {
@@ -48,8 +48,7 @@ export default function SignInForm({ onLoginSuccess }: SignInFormProps) {
           photo: user.photo,
         },
         access,
-        refresh,
-        catalog
+        refresh
       );
       navigate('/home');
       if (onLoginSuccess) {

@@ -86,17 +86,13 @@ export default function Home() {
     setSelectedImages([]);
   };
 
-  const handleUpdateStatus = async (productId: number, status: number, proveedor?: string, marca?: string, rubro?: string, grupo?: string) => {
+  const handleUpdateStatus = async (productId: number, status: number) => {
     setLoading(true);
     setError(null);
     try {
       const response = await axios.post('/api/v1/products/update-status/', {
         id: productId,
         status: status,
-        cod_proveedor: proveedor,
-        cod_marca: marca,
-        cod_rubro: rubro,
-        cod_grupo: grupo,
       });
 
       if (response.status === 200) {
@@ -116,44 +112,12 @@ export default function Home() {
     }
   };
 
-  const handleApprove = (productId: number, proveedor: string | undefined, marca: string | undefined, rubro: string | undefined, grupo: string | undefined) => {
-    handleUpdateStatus(productId, 2, proveedor, marca, rubro, grupo); // 2 for approved
+  const handleApprove = (productId: number) => {
+    handleUpdateStatus(productId, 2); // 2 for approved
   };
 
   const handleDecline = (productId: number) => {
     handleUpdateStatus(productId, 0); // 0 for declined
-  };
-
-  const handleProveedorChange = (productId: number, value: string) => {
-    setResults((prevResults) =>
-      prevResults.map((product) =>
-        product.id === productId ? { ...product, selectedProveedor: value } : product
-      )
-    );
-  };
-
-  const handleMarcaChange = (productId: number, value: string) => {
-    setResults((prevResults) =>
-      prevResults.map((product) =>
-        product.id === productId ? { ...product, selectedMarca: value } : product
-      )
-    );
-  };
-
-  const handleRubroChange = (productId: number, value: string) => {
-    setResults((prevResults) =>
-      prevResults.map((product) =>
-        product.id === productId ? { ...product, selectedRubro: value, selectedGrupo: undefined } : product
-      )
-    );
-  };
-
-  const handleGrupoChange = (productId: number, value: string) => {
-    setResults((prevResults) =>
-      prevResults.map((product) =>
-        product.id === productId ? { ...product, selectedGrupo: value } : product
-      )
-    );
   };
 
   return (
@@ -197,10 +161,6 @@ export default function Home() {
                 onImageClick={handleImageClick} 
                 onApprove={handleApprove} 
                 onDecline={handleDecline} 
-                onProveedorChange={handleProveedorChange}
-                onMarcaChange={handleMarcaChange}
-                onRubroChange={handleRubroChange}
-                onGrupoChange={handleGrupoChange}
               />
             )}
             <LocalizedLoadingOverlay isLoading={loading} />

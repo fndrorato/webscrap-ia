@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../context/AuthContext';
+
 
 interface ProductImage {
   id: number;
@@ -19,23 +19,15 @@ interface Product {
   description: string;
   price: number;
   sku_code: string;
-  created_at: string; // Changed from scraped_at to created_at
-  status?: number; // 0: declined, 1: pending, 2: approved
-  selectedProveedor?: string;
-  selectedMarca?: string;
-  selectedRubro?: string;
-  selectedGrupo?: string;
+  created_at: string;
+  status?: number;
 }
 
 interface SearchResultsTableProps {
   results: Product[];
   onImageClick: (images: ProductImage[]) => void;
-  onApprove?: (productId: number, proveedor: string | undefined, marca: string | undefined, rubro: string | undefined, grupo: string | undefined) => void;
+  onApprove?: (productId: number) => void;
   onDecline?: (productId: number) => void;
-  onProveedorChange?: (productId: number, proveedor: string) => void;
-  onMarcaChange?: (productId: number, marca: string) => void;
-  onRubroChange?: (productId: number, rubro: string) => void;
-  onGrupoChange?: (productId: number, grupo: string) => void;
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({ 
@@ -43,13 +35,8 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   onImageClick, 
   onApprove, 
   onDecline,
-  onProveedorChange,
-  onMarcaChange,
-  onRubroChange,
-  onGrupoChange,
 }) => {
   const { t } = useTranslation();
-  const { catalog } = useAuth();
 
   // const formatDate = (dateString: string) => {
   //   try {
@@ -93,10 +80,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.image')}</th>
             <th className="py-3 px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">{t('search.results.name')}</th>
             <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400 max-w-sm">{t('search.results.description')}</th>
-            <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Proveedor</th>
-            <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Marca</th>
-            <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Rubro</th>
-            <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Grupo</th>
             <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Precio</th>
             <th className="py-3 px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-400">Código</th>
             {(onApprove || onDecline) && (
@@ -117,65 +100,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
               </td>
               <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">{product.name}</td>
               <td className="py-2 px-2 text-sm text-gray-500 dark:text-gray-400 text-justify max-w-sm">{product.description}</td>
-              <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">
-                <select
-                  value={product.selectedProveedor || ''}
-                  onChange={(e) => onProveedorChange && onProveedorChange(product.id, e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">{t('search.results.select_proveedor')}</option>
-                  {catalog?.fornecedores.map((prov) => (
-                    <option key={prov.cod_proveedor} value={prov.cod_proveedor}>
-                      {prov.nombre}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">
-                <select
-                  value={product.selectedMarca || ''}
-                  onChange={(e) => onMarcaChange && onMarcaChange(product.id, e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">{t('search.results.select_marca')}</option>
-                  {catalog?.marcas.map((marca) => (
-                    <option key={marca.cod_marca} value={marca.cod_marca}>
-                      {marca.descripcion}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">
-                <select
-                  value={product.selectedRubro || ''}
-                  onChange={(e) => onRubroChange && onRubroChange(product.id, e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                >
-                  <option value="">{t('search.results.select_rubro')}</option>
-                  {catalog?.rubros.map((rubro) => (
-                    <option key={rubro.cod_rubro} value={rubro.cod_rubro}>
-                      {rubro.descripcion}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">
-                <select
-                  value={product.selectedGrupo || ''}
-                  onChange={(e) => onGrupoChange && onGrupoChange(product.id, e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  disabled={!product.selectedRubro}
-                >
-                  <option value="">{t('search.results.select_grupo')}</option>
-                  {product.selectedRubro && catalog?.grupos
-                    .filter(grupo => grupo.cod_rubro === product.selectedRubro)
-                    .map((grupo) => (
-                      <option key={grupo.cod_grupo} value={grupo.cod_grupo}>
-                        {grupo.descripcion}
-                      </option>
-                    ))}
-                </select>
-              </td>
               <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">{formatPrice(product.price)}</td>
               <td className="py-2 px-2 text-sm text-gray-900 dark:text-white">{product.sku_code}</td>
               {(onApprove || onDecline) && (
@@ -184,7 +108,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                     <div className="flex space-x-2">
                       {onApprove && (
                         <button 
-                          onClick={() => onApprove(product.id, product.selectedProveedor, product.selectedMarca, product.selectedRubro, product.selectedGrupo)} 
+                          onClick={() => onApprove(product.id)} 
                           className="text-green-500 hover:text-green-600 p-1 rounded-full"
                           aria-label={t('search.results.approve')}
                         >

@@ -9,57 +9,25 @@ interface UserData {
   photo?: string;
   permissions: string[];
   profilePicture?: string;
-  catalog?: CatalogData;
+
 }
 
-interface Fornecedor {
-  nombre: string;
-  cod_proveedor: string;
-}
 
-interface Marca {
-  cod_marca: string;
-  descripcion: string;
-}
-
-interface Rubro {
-  cod_rubro: string;
-  descripcion: string;
-}
-
-interface Grupo {
-  cod_grupo: string;
-  cod_rubro: string;
-  descripcion: string;
-}
-
-interface CatalogData {
-  fornecedores: Fornecedor[];
-  marcas: Marca[];
-  rubros: Rubro[];
-  grupos: Grupo[];
-  counts: {
-    fornecedores: number;
-    marcas: number;
-    rubros: number;
-    grupos: number;
-  };
-}
 
 interface AuthContextType {
   user: UserData | null;
   setUser: React.Dispatch<React.SetStateAction<UserData | null>>;
-  login: (userData: UserData, accessToken: string, refreshToken: string, catalogData?: CatalogData) => void;
+  login: (userData: UserData, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   updateUser: (userData: Partial<UserData>) => void;
-  catalog: CatalogData | null;
+
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserData | null>(null);
-  const [catalog, setCatalog] = useState<CatalogData | null>(null);
+
 
   useEffect(() => {
     const storedFirstName = localStorage.getItem('firstName');
@@ -69,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const storedPermissions = localStorage.getItem('permissions');
     const storedPhone = localStorage.getItem('phone');
     const storedPhotoUser = localStorage.getItem('photoUser');
-    const storedCatalog = localStorage.getItem('catalog');
+
 
     if (storedFirstName && storedLastName && storedEmail && storedUserId && storedPermissions) {
       try {
@@ -84,11 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           photo: storedPhotoUser || '',
         };
 
-        if (storedCatalog) {
-          const parsedCatalog = JSON.parse(storedCatalog);
-          userData.catalog = parsedCatalog;
-          setCatalog(parsedCatalog);
-        }
+
         setUser(userData);
       } catch (e) {
         console.error("Failed to parse data from localStorage", e);
@@ -97,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  const login = (userData: UserData, accessToken: string, refreshToken: string, catalogData?: CatalogData) => {
+  const login = (userData: UserData, accessToken: string, refreshToken: string) => {
     console.log(userData);
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
@@ -110,10 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (userData.photo) {
       localStorage.setItem('photoUser', userData.photo);
     }
-    if (catalogData) {
-      localStorage.setItem('catalog', JSON.stringify(catalogData));
-      setCatalog(catalogData);
-    }
+
     setUser(userData);
   };
 
@@ -125,9 +86,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
     localStorage.removeItem('permissions');
-    localStorage.removeItem('catalog');
+
     setUser(null);
-    setCatalog(null);
+
   };
 
   const updateUser = (updatedFields: Partial<UserData>) => {
@@ -137,17 +98,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (updatedFields.photo !== undefined) {
         localStorage.setItem('photoUser', updatedFields.photo);
       }
-      if (updatedFields.catalog !== undefined) {
-        localStorage.setItem('catalog', JSON.stringify(updatedFields.catalog));
-        setCatalog(updatedFields.catalog);
-      }
       // Add other fields to update in localStorage if needed
       return newUser;
     });
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, updateUser, catalog }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

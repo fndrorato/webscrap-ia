@@ -84,15 +84,6 @@ class UpdateProductStatusView(APIView):
         if new_status == 2:
             print(f"📤 Status = 2, iniciando sincronização com Oracle...")
             
-            # Validar campos obrigatórios para Oracle
-            if not cod_proveedor:
-                return Response(
-                    {
-                        "error": "cod_proveedor é obrigatório para status 2",
-                        "message": "Para enviar ao Oracle, é necessário informar o fornecedor"
-                    },
-                    status=http_status.HTTP_400_BAD_REQUEST
-                )
             
             try:
                 # Serializar produto com os dados adicionais
