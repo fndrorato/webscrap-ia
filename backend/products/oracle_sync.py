@@ -57,10 +57,10 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                 original_price = product_data.get('original_price')
                 
                 # Novos campos do Oracle
-                cod_proveedor = product_data.get('cod_proveedor')
-                cod_marca = product_data.get('cod_marca')
-                cod_rubro = product_data.get('cod_rubro')
-                cod_grupo = product_data.get('cod_grupo')
+                # cod_proveedor = product_data.get('cod_proveedor')
+                # cod_marca = product_data.get('cod_marca')
+                # cod_rubro = product_data.get('cod_rubro')
+                # cod_grupo = product_data.get('cod_grupo')
 
                 try:
                     # Converte para float (lidando com vírgula e nulos)
@@ -87,10 +87,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         LINK_WEB = :url,
                         PALABRA_CLAVE = :brand,
                         FEC_PROCESO = :fec_proceso,
-                        COD_PROVEEDOR = :cod_proveedor,
-                        COD_MARCA = :cod_marca,
-                        COD_RUBRO = :cod_rubro,
-                        COD_GRUPO = :cod_grupo,
                         IND_WEB = 'S', 
                         FEC_ULTIMA_COMP = :fec_proceso 
                     WHERE COD_EMPRESA = :cod_empresa AND COD_ARTICULO = :cod_articulo
@@ -103,10 +99,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                     'url': str(product_data.get('url') or '')[:150],
                     'brand': str(product_data.get('brand') or '')[:200],
                     'fec_proceso': timezone.now().date(),
-                    'cod_proveedor': cod_proveedor or '',
-                    'cod_marca': cod_marca or '',
-                    'cod_rubro': cod_rubro or '',
-                    'cod_grupo': cod_grupo or '',
                     'cod_empresa': COD_EMPRESA,
                     'cod_articulo': sku
                 }
@@ -146,13 +138,11 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                     sql_insert = """
                         INSERT INTO ST_ARTICULOS_PROV (
                             COD_EMPRESA, COD_ARTICULO, DESCRIPCION, PRECIO_BASE, COSTO_PROM_EXT, 
-                            DESC_CORTA, LINK_WEB, PALABRA_CLAVE, FEC_PROCESO, COD_PROVEEDOR, 
-                            COD_MARCA, COD_RUBRO, COD_GRUPO,
+                            DESC_CORTA, LINK_WEB, PALABRA_CLAVE, FEC_PROCESO, 
                             COD_MONEDA_BASE, ESTADO, IND_WEB, IND_PRODUCTO
                         ) VALUES (
                             :cod_empresa, :cod_articulo, :description, :price_base, :original_price, 
-                            :desc_corta, :url, :brand, :fec_proceso, :cod_proveedor, 
-                            :cod_marca, :cod_rubro, :cod_grupo,
+                            :desc_corta, :url, :brand, :fec_proceso, 
                             :cod_moneda, :estado, 'S', 'N'
                         )
                     """
@@ -166,10 +156,6 @@ def sync_products_to_oracle(serialized_products, cod_usuario=None, password=None
                         'url': str(product_data.get('url') or '')[:150],
                         'brand': str(product_data.get('brand') or '')[:200],
                         'fec_proceso': timezone.now().date(),
-                        'cod_proveedor': cod_proveedor or '',
-                        'cod_marca': cod_marca or '',
-                        'cod_rubro': cod_rubro or '',
-                        'cod_grupo': cod_grupo or '',
                         'cod_moneda': COD_MONEDA,
                         'estado': 'A'
                     }

@@ -40,10 +40,10 @@ class UpdateProductStatusView(APIView):
         # Obter dados do request
         product_id = request.data.get("id")
         new_status = request.data.get("status")
-        cod_proveedor = request.data.get("cod_proveedor")
-        cod_marca = request.data.get("cod_marca")
-        cod_rubro = request.data.get("cod_rubro")
-        cod_grupo = request.data.get("cod_grupo")
+        # cod_proveedor = request.data.get("cod_proveedor")
+        # cod_marca = request.data.get("cod_marca")
+        # cod_rubro = request.data.get("cod_rubro")
+        # cod_grupo = request.data.get("cod_grupo")
         
         # Validar campos obrigatórios
         if product_id is None or new_status is None:
@@ -100,10 +100,10 @@ class UpdateProductStatusView(APIView):
                 product_data = serializer.data
                 
                 # Adicionar campos do Oracle
-                product_data['cod_proveedor'] = cod_proveedor
-                product_data['cod_marca'] = cod_marca
-                product_data['cod_rubro'] = cod_rubro
-                product_data['cod_grupo'] = cod_grupo
+                # product_data['cod_proveedor'] = cod_proveedor
+                # product_data['cod_marca'] = cod_marca
+                # product_data['cod_rubro'] = cod_rubro
+                # product_data['cod_grupo'] = cod_grupo
                 
                 # Obter username do usuário Oracle autenticado
                 oracle_username = request.user.username.upper() if request.user.is_authenticated else 'WEBSYNC'
